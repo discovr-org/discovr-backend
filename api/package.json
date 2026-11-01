@@ -1,0 +1,38 @@
+{
+  "name": "@discovr/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node --import tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "seed:sundowners": "node scripts/seed-sundowners.mjs",
+    "seed:fish-thali": "node scripts/seed-goan-fish-thali.mjs",
+    "seed:nightlife": "node scripts/seed-nightlife.mjs",
+    "seed:local-bars": "node scripts/seed-local-bars.mjs",
+    "seed:cocktails": "node scripts/seed-cocktails.mjs",
+    "seed:boilermaker": "node scripts/seed-boilermaker.mjs",
+    "seed:palolem-kayaking": "node scripts/seed-palolem-kayaking.mjs",
+    "seed:angel-tattoo": "node scripts/seed-angel-tattoo.mjs",
+    "seed:coco-padel": "node scripts/seed-coco-padel.mjs",
+    "seed:surf-wala": "node scripts/seed-surf-wala.mjs",
+    "seed:mati-earth": "node scripts/seed-mati-earth.mjs",
+    "seed:baga-mangrove": "node scripts/seed-baga-mangrove.mjs",
+    "seed:101-wakepark": "node scripts/seed-101-wakepark.mjs"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.4.0",
+    "@supabase/server": "^1.9.2",
+    "@supabase/supabase-js": "^2.81.0",
+    "dotenv": "^18.0.9",
+    "fastify": "^5.6.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.12",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

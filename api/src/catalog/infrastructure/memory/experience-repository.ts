@@ -1,0 +1,356 @@
+import type { ExperienceRepository } from "../../application/ports/experience-repository.js";
+import type {
+  Experience,
+  ExperienceAdmin,
+  ExperienceCreate,
+  ExperiencePatch,
+  ExperienceStatus,
+  ExperienceSummary,
+  FeedSection,
+  HostCreate,
+  HostPatch,
+  HostSummary,
+} from "../../domain/experience.js";
+import { seedExperiences, seedFeed } from "./seed.js";
+
+function hostKey(businessName: string, phone: string) {
+  return `${businessName}|${phone}`;
+}
+
+type MemoryHost = {
+  id: string;
+  businessName: string;
+  personName: string;
+  phone: string;
+  active: boolean;
+  avatarUrl?: string;
+  avatarAlt?: string;
+};
+
+export class MemoryExperienceRepository implements ExperienceRepository {
+  private readonly statuses = new Map<string, ExperienceStatus>();
+  private readonly groupSizeMax = new Map<string, number>();
+  private readonly covers = new Map<string, { url: string; alt: string }>();
+  private readonly hosts = new Map<string, MemoryHost>();
+  private readonly experienceHostId = new Map<string, string>();
+
+  constructor(
+    private readonly experiences: Experience[] = structuredClone(seedExperiences),
+    private readonly feed: FeedSection[] = structuredClone(seedFeed),
+  ) {
+    for (const e of this.experiences) {
+      this.statuses.set(e.id, "published");
+      this.groupSizeMax.set(e.id, 6);
+      const id = hostKey(e.host.businessName, e.host.phone);
+      if (!this.hosts.has(id)) {
+        this.hosts.set(id, {
+          id,
+          businessName: e.host.businessName,
+          personName: e.host.personName,
+          phone: e.host.phone,
+          active: true,
+        });
+      }
+      this.experienceHostId.set(e.id, id);
+    }
+  }
+
+  async getBySlug(slug: string): Promise<Experience | null> {
+    const e = this.experiences.find((x) => x.slug === slug);
+    if (!e) return null;
+    if ((this.statuses.get(e.id) ?? "published") !== "published") return null;
+    const hostId = this.experienceHostId.get(e.id);
+    const host = hostId ? this.hosts.get(hostId) : undefined;
+    if (host && !host.active) return null;
+    return e;
+  }
+
+  async getAdminById(id: string): Promise<ExperienceAdmin | null> {
+    const e = this.experiences.find((x) => x.id === id);
+    if (!e) return null;
+    return this.toAdmin(e);
+  }
+
+  async listFeed(): Promise<FeedSection[]> {
+    return this.feed
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          const e = this.experiences.find((x) => x.slug === item.slug);
+          if (!e) return false;
+          if ((this.statuses.get(e.id) ?? "published") !== "published") {
+            return false;
+          }
+          const hostId = this.experienceHostId.get(e.id);
+          const host = hostId ? this.hosts.get(hostId) : undefined;
+          return !host || host.active;
+        }),
+      }))
+      .filter((s) => s.items.length > 0);
+  }
+
+  async listExperiences(): Promise<ExperienceSummary[]> {
+    return this.experiences.map((e) => {
+      const hostId = this.experienceHostId.get(e.id) ?? "";
+      const host = this.hosts.get(hostId);
+      return {
+        id: e.id,
+        slug: e.slug,
+        title: e.title,
+        status: this.statuses.get(e.id) ?? "published",
+        verdict: e.verdict,
+        priceFromInr: e.price.fromAmount,
+        hostId,
+        hostBusinessName: host?.businessName ?? e.host.businessName,
+        hostActive: host?.active ?? true,
+        placeNeighborhood: e.place.neighborhood,
+      };
+    });
+  }
+
+  async listHosts(): Promise<HostSummary[]> {
+    return [...this.hosts.values()].map((h) => ({
+      id: h.id,
+      businessName: h.businessName,
+      personName: h.personName,
+      phone: h.phone,
+      experienceCount: [...this.experienceHostId.values()].filter(
+        (id) => id === h.id,
+      ).length,
+      active: h.active,
+      avatarUrl: h.avatarUrl,
+      avatarAlt: h.avatarAlt,
+    }));
+  }
+
+  async createExperience(input: ExperienceCreate): Promise<ExperienceAdmin> {
+    if ([...this.experiences].some((e) => e.slug === input.slug)) {
+      throw new Error("Slug already taken");
+    }
+    const host = this.hosts.get(input.hostId);
+    if (!host) throw new Error(`Host ${input.hostId} not found`);
+
+    const id = crypto.randomUUID();
+    const experience: Experience = {
+      id,
+      slug: input.slug!,
+      title: input.title,
+      host: {
+        businessName: host.businessName,
+        personName: host.personName,
+        phone: host.phone,
+        verified: false,
+        languages: [],
+      },
+      photos: [],
+      verdict: input.verdict?.trim() ?? "",
+      price: {
+        fromAmount: input.priceFromInr ?? 0,
+        paidTo: "paid to the host",
+      },
+      place: {
+        name: input.placeName,
+        neighborhood: input.placeNeighborhood,
+        lat: input.placeLat,
+        lng: input.placeLng,
+      },
+      schedule: {},
+      durationMinutes: input.durationMinutes ?? 120,
+      groupSizeLabel:
+        input.groupSizeLabel ??
+        "Come solo, as a couple, with friends or with family.",
+      about: input.about ?? "",
+      included: [],
+      tags: [],
+      content: {},
+    };
+    this.experiences.push(experience);
+    this.statuses.set(id, input.status ?? "draft");
+    this.groupSizeMax.set(id, input.groupSizeMax ?? 8);
+    this.experienceHostId.set(id, host.id);
+    return this.toAdmin(experience);
+  }
+
+  async updateExperience(
+    id: string,
+    patch: ExperiencePatch,
+  ): Promise<ExperienceAdmin> {
+    const e = this.experiences.find((x) => x.id === id);
+    if (!e) throw new Error(`Experience ${id} not found`);
+
+    if (patch.slug !== undefined) {
+      const clash = this.experiences.find(
+        (x) => x.slug === patch.slug && x.id !== id,
+      );
+      if (clash) throw new Error("Slug already taken");
+      e.slug = patch.slug.trim();
+    }
+    if (patch.title !== undefined) e.title = patch.title.trim();
+    if (patch.verdict !== undefined) e.verdict = (patch.verdict ?? "").trim();
+    if (patch.about !== undefined) e.about = patch.about;
+    if (patch.placeName !== undefined) e.place.name = patch.placeName.trim();
+    if (patch.placeNeighborhood !== undefined) {
+      e.place.neighborhood = patch.placeNeighborhood.trim();
+    }
+    if (patch.placeLat !== undefined) e.place.lat = patch.placeLat;
+    if (patch.placeLng !== undefined) e.place.lng = patch.placeLng;
+    if (patch.priceFromInr !== undefined) {
+      e.price.fromAmount = patch.priceFromInr;
+    }
+    if (patch.durationMinutes !== undefined) {
+      e.durationMinutes = patch.durationMinutes;
+    }
+    if (patch.groupSizeLabel !== undefined) {
+      e.groupSizeLabel = patch.groupSizeLabel.trim();
+    }
+    if (patch.groupSizeMax !== undefined) {
+      this.groupSizeMax.set(id, patch.groupSizeMax);
+    }
+    if (patch.status !== undefined) {
+      this.statuses.set(id, patch.status);
+    }
+    if (patch.tags !== undefined) e.tags = [...patch.tags];
+    if (patch.schedule !== undefined) {
+      e.schedule = patch.schedule as Experience["schedule"];
+    }
+    if (patch.policy !== undefined) {
+      e.policy = patch.policy ?? undefined;
+    }
+    if (patch.content !== undefined) e.content = patch.content;
+    if (patch.coverPhotoUrl !== undefined) {
+      if (!patch.coverPhotoUrl) this.covers.delete(id);
+      else {
+        this.covers.set(id, {
+          url: patch.coverPhotoUrl,
+          alt: patch.coverPhotoAlt?.trim() || e.title,
+        });
+        e.photos = [
+          { src: patch.coverPhotoUrl, alt: patch.coverPhotoAlt?.trim() || e.title },
+          ...e.photos.filter((p) => p.src !== patch.coverPhotoUrl),
+        ];
+      }
+    }
+
+    return this.toAdmin(e);
+  }
+
+  async deleteExperience(id: string): Promise<void> {
+    const idx = this.experiences.findIndex((x) => x.id === id);
+    if (idx < 0) throw new Error(`Experience ${id} not found`);
+    const [removed] = this.experiences.splice(idx, 1);
+    this.statuses.delete(id);
+    this.groupSizeMax.delete(id);
+    this.experienceHostId.delete(id);
+    for (const section of this.feed) {
+      section.items = section.items.filter((item) => item.slug !== removed.slug);
+    }
+  }
+
+  async createHost(input: HostCreate): Promise<HostSummary> {
+    const id = crypto.randomUUID();
+    this.hosts.set(id, {
+      id,
+      businessName: input.businessName,
+      personName: input.personName,
+      phone: input.phone,
+      active: input.active ?? true,
+    });
+    return {
+      id,
+      businessName: input.businessName,
+      personName: input.personName,
+      phone: input.phone,
+      experienceCount: 0,
+      active: input.active ?? true,
+    };
+  }
+
+  async updateHost(id: string, patch: HostPatch): Promise<HostSummary> {
+    const host = this.hosts.get(id);
+    if (!host) throw new Error(`Host ${id} not found`);
+
+    if (patch.businessName !== undefined) {
+      host.businessName = patch.businessName.trim();
+    }
+    if (patch.personName !== undefined) {
+      host.personName = patch.personName.trim();
+    }
+    if (patch.phone !== undefined) {
+      host.phone = patch.phone.trim();
+    }
+    if (patch.active !== undefined) host.active = patch.active;
+    if (patch.avatarUrl !== undefined) {
+      host.avatarUrl = patch.avatarUrl || undefined;
+    }
+    if (patch.avatarAlt !== undefined) {
+      host.avatarAlt = patch.avatarAlt || undefined;
+    }
+
+    for (const e of this.experiences) {
+      if (this.experienceHostId.get(e.id) === id) {
+        e.host.businessName = host.businessName;
+        e.host.personName = host.personName;
+        e.host.phone = host.phone;
+        e.host.avatar = host.avatarUrl
+          ? {
+              src: host.avatarUrl,
+              alt: host.avatarAlt || host.personName,
+            }
+          : undefined;
+      }
+    }
+
+    return {
+      id: host.id,
+      businessName: host.businessName,
+      personName: host.personName,
+      phone: host.phone,
+      experienceCount: [...this.experienceHostId.values()].filter(
+        (hid) => hid === id,
+      ).length,
+      active: host.active,
+      avatarUrl: host.avatarUrl,
+      avatarAlt: host.avatarAlt,
+    };
+  }
+
+  async deleteHost(id: string): Promise<void> {
+    const stillLinked = [...this.experienceHostId.values()].some(
+      (hid) => hid === id,
+    );
+    if (stillLinked) {
+      throw new Error("Host still has listings");
+    }
+    if (!this.hosts.has(id)) throw new Error(`Host ${id} not found`);
+    this.hosts.delete(id);
+  }
+
+  private toAdmin(e: Experience): ExperienceAdmin {
+    const schedule = e.schedule as ExperienceAdmin["schedule"];
+    const hostId = this.experienceHostId.get(e.id) ?? "";
+    return {
+      id: e.id,
+      slug: e.slug,
+      title: e.title,
+      status: this.statuses.get(e.id) ?? "published",
+      verdict: e.verdict,
+      about: e.about,
+      placeName: e.place.name,
+      placeNeighborhood: e.place.neighborhood,
+      placeLat: e.place.lat,
+      placeLng: e.place.lng,
+      priceFromInr: e.price.fromAmount,
+      durationMinutes: e.durationMinutes,
+      groupSizeMax: this.groupSizeMax.get(e.id) ?? 6,
+      groupSizeLabel: e.groupSizeLabel,
+      hostId,
+      hostBusinessName: e.host.businessName,
+      coverPhotoUrl: this.covers.get(e.id)?.url ?? e.photos[0]?.src,
+      coverPhotoAlt: this.covers.get(e.id)?.alt ?? e.photos[0]?.alt,
+      tags: [...e.tags],
+      schedule: schedule ?? {},
+      policy: e.policy ?? null,
+      content: e.content ?? {},
+    };
+  }
+}
