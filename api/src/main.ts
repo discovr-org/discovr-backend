@@ -19,8 +19,11 @@ import { CommunicationService } from "./communication/api/communication-service.
 import type { SmsSender } from "./communication/application/ports/sms-sender.js";
 import { TwilioSmsSender } from "./communication/infrastructure/twilio/sms-sender.js";
 import { UserService } from "./user/api/user-service.js";
+import type { SaveRepository } from "./user/application/ports/save-repository.js";
 import type { UserRepository } from "./user/application/ports/user-repository.js";
+import { MemorySaveRepository } from "./user/infrastructure/memory/save-repository.js";
 import { MemoryUserRepository } from "./user/infrastructure/memory/user-repository.js";
+import { SupabaseSaveRepository } from "./user/infrastructure/supabase/save-repository.js";
 import { SupabaseUserRepository } from "./user/infrastructure/supabase/user-repository.js";
 import { buildApp } from "./app.js";
 import { loadConfig, type ApiConfig } from "./config.js";
@@ -38,12 +41,15 @@ async function main() {
   const catalog = new CatalogService(createCatalogRepository(config, db), images);
 
   const authSource = config.authDataSource ?? config.catalogDataSource;
-  const users = new UserService(createUserRepository(authSource, db));
+  const users = new UserService(
+    createUserRepository(authSource, db),
+    createSaveRepository(authSource, db),
+  );
   const communication = new CommunicationService(createSmsSender(config));
   const { otps, sessions } = createAuthStores(authSource, db);
   const auth = new AuthService(otps, sessions, users, communication);
 
-  const app = await buildApp({ catalog, auth }, config.corsOrigins);
+  const app = await buildApp({ catalog, auth, users }, config.corsOrigins);
   await app.listen({ port: config.port, host: "0.0.0.0" });
 }
 
@@ -65,6 +71,16 @@ function createUserRepository(
     return new MemoryUserRepository();
   }
   return new SupabaseUserRepository(db);
+}
+
+function createSaveRepository(
+  source: "memory" | "supabase",
+  db: ReturnType<typeof createSupabaseAdmin> | null,
+): SaveRepository {
+  if (source === "memory" || !db) {
+    return new MemorySaveRepository();
+  }
+  return new SupabaseSaveRepository(db);
 }
 
 function createAuthStores(

@@ -8,13 +8,16 @@ import type {
   HostCreate,
   HostPatch,
 } from "../catalog/domain/experience.js";
+import type { UserService } from "../user/api/user-service.js";
 import { ValidationError } from "../shared/errors.js";
 import { registerAuthRoutes } from "./auth-routes.js";
+import { registerUserRoutes } from "./user-routes.js";
 import { sendApiError } from "./send-error.js";
 
 export type HttpDeps = {
   catalog: CatalogService;
   auth: AuthService;
+  users: UserService;
 };
 
 /**
@@ -24,6 +27,7 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
   app.get("/health", async () => ({ ok: true, service: "api" }));
 
   registerAuthRoutes(app, deps.auth);
+  registerUserRoutes(app, { auth: deps.auth, users: deps.users });
 
   app.get("/v1/catalog/feed", async (_req, reply) => {
     const body = await deps.catalog.getFeed();
