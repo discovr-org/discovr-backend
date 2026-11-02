@@ -4,7 +4,7 @@ import type {
   ExperienceCreate,
   ExperiencePatch,
   ExperienceSummary,
-  FeedSection,
+  ListingCard,
   HostCreate,
   HostPatch,
   HostSummary,
@@ -14,7 +14,8 @@ import type {
 export interface ExperienceRepository {
   getBySlug(slug: string): Promise<Experience | null>;
   getAdminById(id: string): Promise<ExperienceAdmin | null>;
-  listFeed(): Promise<FeedSection[]>;
+  /** Published listings whose host is active. */
+  listCards(): Promise<ListingCard[]>;
   listExperiences(): Promise<ExperienceSummary[]>;
   listHosts(): Promise<HostSummary[]>;
   createExperience(input: ExperienceCreate): Promise<ExperienceAdmin>;

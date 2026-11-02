@@ -99,6 +99,17 @@ export type ExperienceContent = {
   additionalInfo?: string;
   termsDetail?: string;
   whatToCarry?: string;
+  /** Italic one-liner at the top of About. */
+  pitch?: string;
+  fitnessLevel?: string;
+  /** e.g. "1 instructor for 4 students". */
+  instructorRatio?: string;
+  /** Shown in the yellow Health advisory box. */
+  healthAdvisory?: string;
+  /** "Things to get with you" checklist. */
+  carry?: string[];
+  /** "Know before you go" tips. Falls back to the policy lines. */
+  knowBeforeYouGo?: string[];
   included?: string[];
   notIncluded?: string[];
   phones?: string[];
@@ -259,23 +270,17 @@ export type ExperienceCreate = {
   groupSizeLabel?: string;
 };
 
-export type FeedDensity = "portrait" | "landscape";
 
-export type FeedCard = {
+/** Thin listing row for guest lists. How it is drawn is the frontend's call. */
+export type ListingCard = {
   slug: string;
   title: string;
   placeLabel: string;
-  imageSrc: string;
-  imageAlt: string;
+  imageSrc?: string;
+  imageAlt?: string;
   priceInr?: number;
   priceAsk?: boolean;
-  durationLabel?: string;
+  durationMinutes?: number;
   blurb?: string;
 };
 
-export type FeedSection = {
-  id: string;
-  title: string;
-  density: FeedDensity;
-  items: FeedCard[];
-};

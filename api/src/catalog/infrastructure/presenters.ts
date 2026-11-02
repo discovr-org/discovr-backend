@@ -1,13 +1,12 @@
-import { formatDuration } from "../application/format.js";
 import type {
   Experience,
   ExperienceAdmin,
   ExperienceSummary,
-  FeedSection,
+  ListingCard,
   HostSummary,
 } from "../domain/experience.js";
 
-/** API DTOs shaped for the PWA (duration string, place without neighborhood field leak). */
+/** API DTOs for the PWA. Raw data only; the PWA formats it for display. */
 
 export function presentExperience(e: Experience) {
   return {
@@ -24,7 +23,7 @@ export function presentExperience(e: Experience) {
       lng: e.place.lng,
     },
     schedule: e.schedule,
-    duration: formatDuration(e.durationMinutes),
+    durationMinutes: e.durationMinutes,
     groupSize: e.groupSizeLabel,
     about: e.about,
     included: e.included,
@@ -36,8 +35,8 @@ export function presentExperience(e: Experience) {
   };
 }
 
-export function presentFeed(sections: FeedSection[]) {
-  return { sections };
+export function presentCards(cards: ListingCard[]) {
+  return { cards };
 }
 
 export function presentExperienceSummaries(rows: ExperienceSummary[]) {

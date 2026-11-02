@@ -161,28 +161,6 @@ const { error: incErr } = await sb.from("experience_inclusions").insert([
 ]);
 assertOk("inclusions", incErr);
 
-const sectionId = "33333333-3333-4333-8333-333333333307";
-const { error: secErr } = await sb.from("feed_sections").upsert(
-  {
-    id: sectionId,
-    slug: "coastal-kayaking",
-    title: "Coastal Kayaking",
-    density: "portrait",
-    sort_order: 60,
-    active: true,
-  },
-  { onConflict: "id" },
-);
-assertOk("feed_sections", secErr);
-
-await sb.from("feed_section_items").delete().eq("section_id", sectionId);
-const { error: itemsErr } = await sb.from("feed_section_items").insert({
-  section_id: sectionId,
-  experience_id: row.id,
-  sort_order: 0,
-});
-assertOk("feed_section_items", itemsErr);
-
 const { data } = await sb
   .from("experiences")
   .select("slug,title,price_from_inr,verdict")

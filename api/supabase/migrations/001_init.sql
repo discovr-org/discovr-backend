@@ -152,26 +152,3 @@ create index reviews_experience_created_idx
   on reviews (experience_id, created_at desc)
   where published = true;
 
--- ---------------------------------------------------------------------------
--- Editorial feed (rails), not the inventory itself
--- ---------------------------------------------------------------------------
-create table feed_sections (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
-  title text not null,
-  density text not null check (density in ('portrait', 'landscape')),
-  sort_order int not null default 0,
-  active boolean not null default true
-);
-
-create table feed_section_items (
-  id uuid primary key default gen_random_uuid(),
-  section_id uuid not null references feed_sections (id) on delete cascade,
-  experience_id uuid not null references experiences (id) on delete cascade,
-  sort_order int not null default 0,
-  card_title_override text,
-  card_place_override text,
-  unique (section_id, experience_id)
-);
-
-create index feed_section_items_section_idx on feed_section_items (section_id, sort_order);

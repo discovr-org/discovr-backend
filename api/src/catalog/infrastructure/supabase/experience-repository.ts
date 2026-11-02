@@ -8,8 +8,7 @@ import type {
   ExperiencePatch,
   ExperienceStatus,
   ExperienceSummary,
-  FeedCard,
-  FeedSection,
+  ListingCard,
   HostCreate,
   HostPatch,
   HostSummary,
@@ -20,7 +19,7 @@ import type {
 } from "../../domain/experience.js";
 
 /**
- * Supabase adapter. Maps relational rows → domain Experience / FeedSection.
+ * Supabase adapter. Maps relational rows → domain Experience / ListingCard.
  * Keep SQL shape changes here — use-cases stay untouched.
  */
 export class SupabaseExperienceRepository implements ExperienceRepository {
@@ -51,41 +50,29 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     return mapExperience(row);
   }
 
-  async listFeed(): Promise<FeedSection[]> {
+  async listCards(): Promise<ListingCard[]> {
     const { data, error } = await this.db
-      .from("feed_sections")
+      .from("experiences")
       .select(
         `
-        id,
         slug,
         title,
-        density,
-        sort_order,
-        items:feed_section_items(
-          sort_order,
-          card_title_override,
-          card_place_override,
-          experience:experiences(
-            slug,
-            title,
-            place_neighborhood,
-            price_from_inr,
-            price_ask,
-            cover_photo_url,
-            cover_photo_alt,
-            duration_minutes,
-            about,
-            status,
-            host:hosts(active)
-          )
-        )
+        place_neighborhood,
+        price_from_inr,
+        price_ask,
+        cover_photo_url,
+        cover_photo_alt,
+        duration_minutes,
+        about,
+        verdict,
+        host:hosts(active)
       `,
       )
-      .eq("active", true)
-      .order("sort_order", { ascending: true });
-
+      .eq("status", "published");
     if (error) throw error;
-    return (data ?? []).map(mapFeedSection).filter((s) => s.items.length > 0);
+    return ((data ?? []) as DbRow[])
+      .filter((row) => (row.host as { active?: boolean } | null)?.active !== false)
+      .map(mapListingCard);
   }
 
   async listExperiences(): Promise<ExperienceSummary[]> {
@@ -586,50 +573,17 @@ function mapExperience(row: DbRow): Experience {
   };
 }
 
-function mapFeedSection(row: DbRow): FeedSection {
-  const items = ((row.items as DbRow[]) ?? [])
-    .slice()
-    .sort((a, b) => Number(a.sort_order) - Number(b.sort_order))
-    .map((item): FeedCard | null => {
-      const exp = item.experience as DbRow | null;
-      if (!exp || exp.status !== "published") return null;
-      const host = exp.host as { active?: boolean } | null;
-      if (host && host.active === false) return null;
-      const minutes = Number(exp.duration_minutes);
-      const card: FeedCard = {
-        slug: String(exp.slug),
-        title: String(item.card_title_override ?? exp.title),
-        placeLabel: String(item.card_place_override ?? exp.place_neighborhood),
-        imageSrc: String(exp.cover_photo_url ?? ""),
-        imageAlt: String(exp.cover_photo_alt ?? exp.title),
-        priceInr: exp.price_ask ? undefined : Number(exp.price_from_inr),
-        priceAsk: Boolean(exp.price_ask) || undefined,
-      };
-      if (row.density === "landscape") {
-        card.blurb = String(exp.about).slice(0, 160);
-        card.durationLabel = formatMinutes(minutes);
-      }
-      if (!card.imageSrc) {
-        card.imageSrc = "/demo/jetty-dusk.png";
-        card.imageAlt = card.imageAlt || card.title;
-      }
-      return card;
-    })
-    .filter((x): x is FeedCard => x != null);
-
+function mapListingCard(row: DbRow): ListingCard {
+  const minutes = Number(row.duration_minutes);
   return {
-    id: String(row.slug ?? row.id),
+    slug: String(row.slug),
     title: String(row.title),
-    density: row.density === "landscape" ? "landscape" : "portrait",
-    items,
+    placeLabel: String(row.place_neighborhood ?? ""),
+    imageSrc: row.cover_photo_url ? String(row.cover_photo_url) : undefined,
+    imageAlt: row.cover_photo_alt ? String(row.cover_photo_alt) : undefined,
+    priceInr: row.price_ask ? undefined : Number(row.price_from_inr),
+    priceAsk: Boolean(row.price_ask) || undefined,
+    blurb: String(row.verdict || row.about || "") || undefined,
+    durationMinutes: minutes > 0 ? minutes : undefined,
   };
-}
-
-function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes} mins`;
-  const hours = minutes / 60;
-  if (Number.isInteger(hours)) return hours === 1 ? "1 hr" : `${hours} hrs`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${h} hr${h === 1 ? "" : "s"} ${m} mins`;
 }

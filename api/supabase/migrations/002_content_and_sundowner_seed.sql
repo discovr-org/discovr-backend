@@ -5,12 +5,6 @@ alter table experiences
   add column if not exists content jsonb not null default '{}'::jsonb;
 
 -- Wipe prior seed for these slugs (children cascade from experiences)
-delete from feed_section_items
-where experience_id in (
-  select id from experiences
-  where slug in ('paloma', 'bastian-riviera', 'pisco-by-the-beach', 'slow-tide')
-);
-
 delete from experiences
 where slug in ('paloma', 'bastian-riviera', 'pisco-by-the-beach', 'slow-tide');
 
@@ -158,27 +152,3 @@ insert into experience_tags (experience_id, tag) values
   ('22222222-2222-4222-8222-222222222204', 'Heritage'),
   ('22222222-2222-4222-8222-222222222204', 'Sunset');
 
--- ---------------------------------------------------------------------------
--- Feed rail
--- ---------------------------------------------------------------------------
-insert into feed_sections (id, slug, title, density, sort_order, active)
-values (
-  '33333333-3333-4333-8333-333333333301',
-  'sundowners',
-  'Find your table for sunset',
-  'landscape',
-  10,
-  true
-)
-on conflict (slug) do update
-set title = excluded.title,
-    active = true;
-
-delete from feed_section_items
-where section_id = '33333333-3333-4333-8333-333333333301';
-
-insert into feed_section_items (section_id, experience_id, sort_order) values
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222201', 0),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222202', 1),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222203', 2),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222204', 3);

@@ -128,56 +128,6 @@ const { error: tagErr } = await sb.from("experience_tags").insert(
 );
 assertOk("tags", tagErr);
 
-const sectionId = "33333333-3333-4333-8333-333333333306";
-const { error: secErr } = await sb.from("feed_sections").upsert(
-  {
-    id: sectionId,
-    slug: "cocktails-nightlife",
-    title: "Drinks, shared plates and a night out",
-    density: "portrait",
-    sort_order: 55,
-    active: true,
-  },
-  { onConflict: "id" },
-);
-assertOk("feed_sections", secErr);
-
-await sb.from("feed_section_items").delete().eq("section_id", sectionId);
-const { error: itemsErr } = await sb.from("feed_section_items").insert({
-  section_id: sectionId,
-  experience_id: row.id,
-  sort_order: 0,
-});
-assertOk("feed_section_items", itemsErr);
-
-// Also pin on cocktails + nightlife rails if they exist
-for (const rail of [
-  { id: "33333333-3333-4333-8333-333333333305", slug: "cocktails" },
-  { id: "33333333-3333-4333-8333-333333333303", slug: "nightlife" },
-]) {
-  const { data: existing } = await sb
-    .from("feed_section_items")
-    .select("id")
-    .eq("section_id", rail.id)
-    .eq("experience_id", row.id)
-    .maybeSingle();
-  if (!existing) {
-    const { data: maxRow } = await sb
-      .from("feed_section_items")
-      .select("sort_order")
-      .eq("section_id", rail.id)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const next = Number(maxRow?.sort_order ?? -1) + 1;
-    await sb.from("feed_section_items").insert({
-      section_id: rail.id,
-      experience_id: row.id,
-      sort_order: next,
-    });
-  }
-}
-
 const { data } = await sb
   .from("experiences")
   .select("slug,title,price_from_inr")

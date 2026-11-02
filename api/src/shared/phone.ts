@@ -1,4 +1,4 @@
-import { ValidationError } from "../../shared/errors.js";
+import { ValidationError } from "./errors.js";
 
 /** Normalize Indian-friendly input to E.164. Default country +91. */
 export function normalizePhoneE164(raw: string): string {

@@ -490,30 +490,6 @@ for (const exp of experiences) {
   assertOk(`tags ${row.slug}`, tagErr);
 }
 
-const sectionId = "33333333-3333-4333-8333-333333333301";
-const { error: secErr } = await sb.from("feed_sections").upsert(
-  {
-    id: sectionId,
-    slug: "sundowners",
-    title: "Find your table for sunset",
-    density: "landscape",
-    sort_order: 10,
-    active: true,
-  },
-  { onConflict: "id" },
-);
-assertOk("feed_sections", secErr);
-
-await sb.from("feed_section_items").delete().eq("section_id", sectionId);
-const { error: itemsErr } = await sb.from("feed_section_items").insert(
-  experiences.map((e, i) => ({
-    section_id: sectionId,
-    experience_id: e.id,
-    sort_order: i,
-  })),
-);
-assertOk("feed_section_items", itemsErr);
-
 const { data: check } = await sb
   .from("experiences")
   .select("slug,title,content")

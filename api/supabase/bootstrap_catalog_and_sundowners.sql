@@ -153,29 +153,6 @@ create index reviews_experience_created_idx
   on reviews (experience_id, created_at desc)
   where published = true;
 
--- ---------------------------------------------------------------------------
--- Editorial feed (rails), not the inventory itself
--- ---------------------------------------------------------------------------
-create table feed_sections (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
-  title text not null,
-  density text not null check (density in ('portrait', 'landscape')),
-  sort_order int not null default 0,
-  active boolean not null default true
-);
-
-create table feed_section_items (
-  id uuid primary key default gen_random_uuid(),
-  section_id uuid not null references feed_sections (id) on delete cascade,
-  experience_id uuid not null references experiences (id) on delete cascade,
-  sort_order int not null default 0,
-  card_title_override text,
-  card_place_override text,
-  unique (section_id, experience_id)
-);
-
-create index feed_section_items_section_idx on feed_section_items (section_id, sort_order);
 -- Hybrid content bag + seed four sundowners from the research sheet.
 -- Safe to re-run: deletes/reinserts by known slugs.
 
@@ -183,12 +160,6 @@ alter table experiences
   add column if not exists content jsonb not null default '{}'::jsonb;
 
 -- Wipe prior seed for these slugs (children cascade from experiences)
-delete from feed_section_items
-where experience_id in (
-  select id from experiences
-  where slug in ('paloma', 'bastian-riviera', 'pisco-by-the-beach', 'slow-tide')
-);
-
 delete from experiences
 where slug in ('paloma', 'bastian-riviera', 'pisco-by-the-beach', 'slow-tide');
 
@@ -336,27 +307,3 @@ insert into experience_tags (experience_id, tag) values
   ('22222222-2222-4222-8222-222222222204', 'Heritage'),
   ('22222222-2222-4222-8222-222222222204', 'Sunset');
 
--- ---------------------------------------------------------------------------
--- Feed rail
--- ---------------------------------------------------------------------------
-insert into feed_sections (id, slug, title, density, sort_order, active)
-values (
-  '33333333-3333-4333-8333-333333333301',
-  'sundowners',
-  'Find your table for sunset',
-  'landscape',
-  10,
-  true
-)
-on conflict (slug) do update
-set title = excluded.title,
-    active = true;
-
-delete from feed_section_items
-where section_id = '33333333-3333-4333-8333-333333333301';
-
-insert into feed_section_items (section_id, experience_id, sort_order) values
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222201', 0),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222202', 1),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222203', 2),
-  ('33333333-3333-4333-8333-333333333301', '22222222-2222-4222-8222-222222222204', 3);

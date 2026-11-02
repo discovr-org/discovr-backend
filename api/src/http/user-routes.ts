@@ -8,6 +8,21 @@ export function registerUserRoutes(
   app: FastifyInstance,
   deps: { auth: AuthService; users: UserService },
 ) {
+  app.post<{ Body: { phone?: string; source?: string } }>(
+    "/v1/trip-updates",
+    async (req, reply) => {
+      try {
+        const body = await deps.users.subscribeTripUpdates(
+          req.body?.phone ?? "",
+          req.body?.source,
+        );
+        return reply.code(201).send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
   app.get("/v1/me/saves", async (req, reply) => {
     try {
       const userId = await requireUserId(deps.auth, req.headers.authorization);

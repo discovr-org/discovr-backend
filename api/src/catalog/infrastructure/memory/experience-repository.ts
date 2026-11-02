@@ -6,12 +6,12 @@ import type {
   ExperiencePatch,
   ExperienceStatus,
   ExperienceSummary,
-  FeedSection,
+  ListingCard,
   HostCreate,
   HostPatch,
   HostSummary,
 } from "../../domain/experience.js";
-import { seedExperiences, seedFeed } from "./seed.js";
+import { seedExperiences } from "./seed.js";
 
 function hostKey(businessName: string, phone: string) {
   return `${businessName}|${phone}`;
@@ -37,7 +37,6 @@ export class MemoryExperienceRepository implements ExperienceRepository {
 
   constructor(
     private readonly experiences: Experience[] = structuredClone(seedExperiences),
-    private readonly feed: FeedSection[] = structuredClone(seedFeed),
   ) {
     for (const e of this.experiences) {
       this.statuses.set(e.id, "published");
@@ -73,22 +72,29 @@ export class MemoryExperienceRepository implements ExperienceRepository {
     return this.toAdmin(e);
   }
 
-  async listFeed(): Promise<FeedSection[]> {
-    return this.feed
-      .map((section) => ({
-        ...section,
-        items: section.items.filter((item) => {
-          const e = this.experiences.find((x) => x.slug === item.slug);
-          if (!e) return false;
-          if ((this.statuses.get(e.id) ?? "published") !== "published") {
-            return false;
-          }
-          const hostId = this.experienceHostId.get(e.id);
-          const host = hostId ? this.hosts.get(hostId) : undefined;
-          return !host || host.active;
-        }),
-      }))
-      .filter((s) => s.items.length > 0);
+  async listCards(): Promise<ListingCard[]> {
+    return this.experiences
+      .filter((e) => {
+        if ((this.statuses.get(e.id) ?? "published") !== "published") return false;
+        const hostId = this.experienceHostId.get(e.id);
+        const host = hostId ? this.hosts.get(hostId) : undefined;
+        return !host || host.active;
+      })
+      .map((e) => {
+        const custom = this.covers.get(e.id);
+        const cover = custom ? { src: custom.url, alt: custom.alt } : e.photos[0];
+        return {
+          slug: e.slug,
+          title: e.title,
+          placeLabel: e.place.neighborhood,
+          imageSrc: cover?.src,
+          imageAlt: cover?.alt,
+          priceInr: e.price.askForPrice ? undefined : e.price.fromAmount,
+          priceAsk: e.price.askForPrice || undefined,
+          blurb: e.verdict || undefined,
+          durationMinutes: e.durationMinutes || undefined,
+        };
+      });
   }
 
   async listExperiences(): Promise<ExperienceSummary[]> {
@@ -240,13 +246,10 @@ export class MemoryExperienceRepository implements ExperienceRepository {
   async deleteExperience(id: string): Promise<void> {
     const idx = this.experiences.findIndex((x) => x.id === id);
     if (idx < 0) throw new Error(`Experience ${id} not found`);
-    const [removed] = this.experiences.splice(idx, 1);
+    this.experiences.splice(idx, 1);
     this.statuses.delete(id);
     this.groupSizeMax.delete(id);
     this.experienceHostId.delete(id);
-    for (const section of this.feed) {
-      section.items = section.items.filter((item) => item.slug !== removed.slug);
-    }
   }
 
   async createHost(input: HostCreate): Promise<HostSummary> {

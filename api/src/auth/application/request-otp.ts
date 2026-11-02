@@ -1,7 +1,7 @@
 import type { CommunicationService } from "../../communication/api/communication-service.js";
 import { ValidationError } from "../../shared/errors.js";
 import { generateOtpCode, hashSecret } from "./crypto.js";
-import { normalizePhoneE164 } from "./phone.js";
+import { normalizePhoneE164 } from "../../shared/phone.js";
 import type { OtpRepository } from "./ports/otp-repository.js";
 
 const OTP_TTL_MS = 10 * 60 * 1000;

@@ -29,8 +29,8 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
   registerAuthRoutes(app, deps.auth);
   registerUserRoutes(app, { auth: deps.auth, users: deps.users });
 
-  app.get("/v1/catalog/feed", async (_req, reply) => {
-    const body = await deps.catalog.getFeed();
+  app.get("/v1/catalog/cards", async (_req, reply) => {
+    const body = await deps.catalog.getCards();
     return reply.send(body);
   });
 
@@ -56,9 +56,9 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     },
   );
 
-  app.post("/v1/admin/cache/feed/refresh", async (_req, reply) => {
+  app.post("/v1/admin/cache/cards/refresh", async (_req, reply) => {
     try {
-      const body = await deps.catalog.refreshFeed();
+      const body = await deps.catalog.refreshCards();
       return reply.send(body);
     } catch (err) {
       return sendApiError(reply, err);

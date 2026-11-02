@@ -1,12 +1,12 @@
-import type { FeedSection } from "../domain/experience.js";
+import type { ListingCard } from "../domain/experience.js";
 import type { ExperienceRepository } from "./ports/experience-repository.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Home feed, kept in memory for `ttlMs` so most requests skip the database. */
-export class ListFeed {
-  private cached: { sections: FeedSection[]; expiresAt: number } | null = null;
-  private inFlight: Promise<FeedSection[]> | null = null;
+/** Listing cards, kept in memory for `ttlMs` so most requests skip the database. */
+export class ListCards {
+  private cached: { cards: ListingCard[]; expiresAt: number } | null = null;
+  private inFlight: Promise<ListingCard[]> | null = null;
 
   constructor(
     private readonly repo: ExperienceRepository,
@@ -14,14 +14,14 @@ export class ListFeed {
     private readonly now: () => number = Date.now,
   ) {}
 
-  execute(): Promise<FeedSection[]> {
+  execute(): Promise<ListingCard[]> {
     if (this.cached && this.cached.expiresAt > this.now()) {
-      return Promise.resolve(this.cached.sections);
+      return Promise.resolve(this.cached.cards);
     }
     return this.load();
   }
 
-  /** Drop the cached feed. The next request reads the database again. */
+  /** Drop the cached cards. The next request reads the database again. */
   invalidate(): void {
     this.cached = null;
     // A read already in flight may hold pre-edit data; don't let it fill the cache.
@@ -29,21 +29,21 @@ export class ListFeed {
   }
 
   /** Drop the cache and load a fresh copy now. */
-  refresh(): Promise<FeedSection[]> {
+  refresh(): Promise<ListingCard[]> {
     this.invalidate();
     return this.load();
   }
 
-  private load(): Promise<FeedSection[]> {
+  private load(): Promise<ListingCard[]> {
     // Concurrent misses share one database read.
     if (this.inFlight) return this.inFlight;
     const started = this.repo
-      .listFeed()
-      .then((sections) => {
+      .listCards()
+      .then((cards) => {
         if (this.inFlight === started) {
-          this.cached = { sections, expiresAt: this.now() + this.ttlMs };
+          this.cached = { cards, expiresAt: this.now() + this.ttlMs };
         }
-        return sections;
+        return cards;
       })
       .finally(() => {
         if (this.inFlight === started) this.inFlight = null;

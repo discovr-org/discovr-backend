@@ -5,7 +5,7 @@ import { DeleteHost } from "../application/delete-host.js";
 import { GetAdminExperience } from "../application/get-admin-experience.js";
 import { GetExperience } from "../application/get-experience.js";
 import { ListExperiences } from "../application/list-experiences.js";
-import { ListFeed } from "../application/list-feed.js";
+import { ListCards } from "../application/list-cards.js";
 import { ListHosts } from "../application/list-hosts.js";
 import type { ExperienceRepository } from "../application/ports/experience-repository.js";
 import type { ImageUploader } from "../application/ports/image-uploader.js";
@@ -24,7 +24,7 @@ import {
   presentExperience,
   presentExperienceAdmin,
   presentExperienceSummaries,
-  presentFeed,
+  presentCards,
   presentHostSummaries,
   presentHostSummary,
 } from "../infrastructure/presenters.js";
@@ -33,7 +33,7 @@ import {
 export class CatalogService {
   private readonly getExperience: GetExperience;
   private readonly getAdminExperience: GetAdminExperience;
-  private readonly listFeed: ListFeed;
+  private readonly listCards: ListCards;
   private readonly listExperiences: ListExperiences;
   private readonly listHosts: ListHosts;
   private readonly createExperience: CreateExperience;
@@ -51,7 +51,7 @@ export class CatalogService {
   ) {
     this.getExperience = new GetExperience(repo);
     this.getAdminExperience = new GetAdminExperience(repo);
-    this.listFeed = new ListFeed(repo);
+    this.listCards = new ListCards(repo);
     this.listExperiences = new ListExperiences(repo);
     this.listHosts = new ListHosts(repo);
     this.createExperience = new CreateExperience(repo);
@@ -68,19 +68,15 @@ export class CatalogService {
       : null;
   }
 
-  async getFeed() {
-    const sections = await this.listFeed.execute();
-    return presentFeed(sections);
+  async getCards() {
+    const cards = await this.listCards.execute();
+    return presentCards(cards);
   }
 
-  /** Clear the cached home feed and cache a fresh copy. */
-  async refreshFeed() {
-    const sections = await this.listFeed.refresh();
-    return {
-      ok: true as const,
-      sections: sections.length,
-      items: sections.reduce((n, s) => n + s.items.length, 0),
-    };
+  /** Clear the cached cards and cache a fresh copy. */
+  async refreshCards() {
+    const cards = await this.listCards.refresh();
+    return { ok: true as const, cards: cards.length };
   }
 
   async getExperienceBySlug(slug: string) {
@@ -105,37 +101,37 @@ export class CatalogService {
 
   async addExperience(input: ExperienceCreate) {
     const row = await this.createExperience.execute(input);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentExperienceAdmin(row);
   }
 
   async patchExperience(id: string, patch: ExperiencePatch) {
     const row = await this.updateExperience.execute(id, patch);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentExperienceAdmin(row);
   }
 
   async removeExperience(id: string) {
     await this.deleteExperience.execute(id);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return { ok: true as const };
   }
 
   async addHost(input: HostCreate) {
     const row = await this.createHost.execute(input);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentHostSummary(row);
   }
 
   async patchHost(id: string, patch: HostPatch) {
     const row = await this.updateHost.execute(id, patch);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentHostSummary(row);
   }
 
   async removeHost(id: string) {
     await this.deleteHost.execute(id);
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return { ok: true as const };
   }
 
@@ -157,7 +153,7 @@ export class CatalogService {
       experienceId,
       ...file,
     });
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentExperienceAdmin(row);
   }
 
@@ -179,7 +175,7 @@ export class CatalogService {
       hostId,
       ...file,
     });
-    this.listFeed.invalidate();
+    this.listCards.invalidate();
     return presentHostSummary(row);
   }
 }

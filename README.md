@@ -24,7 +24,7 @@ Smoke:
 
 ```bash
 curl -s http://127.0.0.1:8080/health
-curl -s http://127.0.0.1:8080/v1/catalog/feed | head
+curl -s http://127.0.0.1:8080/v1/catalog/cards | head
 curl -s http://127.0.0.1:8080/v1/catalog/experiences/night-kayak-mangroves | head
 ```
 

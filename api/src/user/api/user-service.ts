@@ -6,9 +6,11 @@ import type { SaveRepository } from "../application/ports/save-repository.js";
 import type { UserRepository } from "../application/ports/user-repository.js";
 import { RemoveSave } from "../application/remove-save.js";
 import { ReplaceSaves } from "../application/replace-saves.js";
+import type { TripUpdateRepository } from "../application/ports/trip-update-repository.js";
+import { SubscribeTripUpdates } from "../application/subscribe-trip-updates.js";
 import { presentSave, presentUser } from "../infrastructure/presenters.js";
 
-/** Public door into users + their saves. */
+/** Public door into users, their saves, and trip-update signups. */
 export class UserService {
   private readonly findOrCreateUser: FindOrCreateUser;
   private readonly getUser: GetUser;
@@ -16,14 +18,20 @@ export class UserService {
   private readonly replaceSaves: ReplaceSaves;
   private readonly addSave: AddSave;
   private readonly removeSave: RemoveSave;
+  private readonly subscribeTrip: SubscribeTripUpdates;
 
-  constructor(users: UserRepository, saves: SaveRepository) {
+  constructor(
+    users: UserRepository,
+    saves: SaveRepository,
+    tripUpdates: TripUpdateRepository,
+  ) {
     this.findOrCreateUser = new FindOrCreateUser(users);
     this.getUser = new GetUser(users);
     this.listSaves = new ListSaves(saves);
     this.replaceSaves = new ReplaceSaves(saves);
     this.addSave = new AddSave(saves);
     this.removeSave = new RemoveSave(saves);
+    this.subscribeTrip = new SubscribeTripUpdates(tripUpdates);
   }
 
   async findOrCreateByPhone(phoneE164: string) {
@@ -49,6 +57,11 @@ export class UserService {
   async saveExperience(userId: string, experienceSlug: string) {
     const row = await this.addSave.execute(userId, experienceSlug);
     return presentSave(row);
+  }
+
+  /** Footer "Keep me posted": no account needed. */
+  subscribeTripUpdates(phone: string, source?: string) {
+    return this.subscribeTrip.execute(phone, source);
   }
 
   async unsaveExperience(userId: string, experienceSlug: string) {

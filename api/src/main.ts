@@ -24,6 +24,9 @@ import type { UserRepository } from "./user/application/ports/user-repository.js
 import { MemorySaveRepository } from "./user/infrastructure/memory/save-repository.js";
 import { MemoryUserRepository } from "./user/infrastructure/memory/user-repository.js";
 import { SupabaseSaveRepository } from "./user/infrastructure/supabase/save-repository.js";
+import type { TripUpdateRepository } from "./user/application/ports/trip-update-repository.js";
+import { MemoryTripUpdateRepository } from "./user/infrastructure/memory/trip-update-repository.js";
+import { SupabaseTripUpdateRepository } from "./user/infrastructure/supabase/trip-update-repository.js";
 import { SupabaseUserRepository } from "./user/infrastructure/supabase/user-repository.js";
 import { buildApp } from "./app.js";
 import { loadConfig, type ApiConfig } from "./config.js";
@@ -44,6 +47,7 @@ async function main() {
   const users = new UserService(
     createUserRepository(authSource, db),
     createSaveRepository(authSource, db),
+    createTripUpdateRepository(authSource, db),
   );
   const communication = new CommunicationService(createSmsSender(config));
   const { otps, sessions } = createAuthStores(authSource, db);
@@ -81,6 +85,16 @@ function createSaveRepository(
     return new MemorySaveRepository();
   }
   return new SupabaseSaveRepository(db);
+}
+
+function createTripUpdateRepository(
+  source: "memory" | "supabase",
+  db: ReturnType<typeof createSupabaseAdmin> | null,
+): TripUpdateRepository {
+  if (source === "memory" || !db) {
+    return new MemoryTripUpdateRepository();
+  }
+  return new SupabaseTripUpdateRepository(db);
 }
 
 function createAuthStores(

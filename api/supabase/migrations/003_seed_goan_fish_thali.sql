@@ -1,12 +1,6 @@
 -- Goan fish thali shortlist: Bombil, Vinayak, Kokni Kanteen, Ritz Classic Panjim.
 -- Safe to re-run for these slugs.
 
-delete from feed_section_items
-where experience_id in (
-  select id from experiences
-  where slug in ('bombil', 'vinayak-family-restaurant', 'kokni-kanteen', 'ritz-classic-panjim')
-);
-
 delete from experiences
 where slug in ('bombil', 'vinayak-family-restaurant', 'kokni-kanteen', 'ritz-classic-panjim');
 
@@ -155,24 +149,3 @@ insert into experience_inclusions (experience_id, included, title, detail, sort_
   ('22222222-2222-4222-8222-222222222304', true, 'Seating and table service', 'Food and drinks charged separately.', 0),
   ('22222222-2222-4222-8222-222222222304', false, 'Not included: food, drinks, taxes', 'Any booking extras are extra too.', 1);
 
-insert into feed_sections (id, slug, title, density, sort_order, active)
-values (
-  '33333333-3333-4333-8333-333333333302',
-  'goan-fish-thali',
-  'Goan lunches with a story',
-  'portrait',
-  20,
-  true
-)
-on conflict (slug) do update
-set title = excluded.title,
-    active = true;
-
-delete from feed_section_items
-where section_id = '33333333-3333-4333-8333-333333333302';
-
-insert into feed_section_items (section_id, experience_id, sort_order) values
-  ('33333333-3333-4333-8333-333333333302', '22222222-2222-4222-8222-222222222301', 0),
-  ('33333333-3333-4333-8333-333333333302', '22222222-2222-4222-8222-222222222302', 1),
-  ('33333333-3333-4333-8333-333333333302', '22222222-2222-4222-8222-222222222303', 2),
-  ('33333333-3333-4333-8333-333333333302', '22222222-2222-4222-8222-222222222304', 3);

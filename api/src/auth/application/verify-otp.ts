@@ -6,7 +6,7 @@ import {
   hashSecret,
   secretsMatch,
 } from "./crypto.js";
-import { normalizePhoneE164 } from "./phone.js";
+import { normalizePhoneE164 } from "../../shared/phone.js";
 import type { OtpRepository } from "./ports/otp-repository.js";
 import type { SessionRepository } from "./ports/session-repository.js";
 
