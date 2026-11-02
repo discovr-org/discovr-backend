@@ -73,6 +73,16 @@ export class CatalogService {
     return presentFeed(sections);
   }
 
+  /** Clear the cached home feed and cache a fresh copy. */
+  async refreshFeed() {
+    const sections = await this.listFeed.refresh();
+    return {
+      ok: true as const,
+      sections: sections.length,
+      items: sections.reduce((n, s) => n + s.items.length, 0),
+    };
+  }
+
   async getExperienceBySlug(slug: string) {
     const experience = await this.getExperience.execute(slug);
     return presentExperience(experience);
@@ -95,31 +105,37 @@ export class CatalogService {
 
   async addExperience(input: ExperienceCreate) {
     const row = await this.createExperience.execute(input);
+    this.listFeed.invalidate();
     return presentExperienceAdmin(row);
   }
 
   async patchExperience(id: string, patch: ExperiencePatch) {
     const row = await this.updateExperience.execute(id, patch);
+    this.listFeed.invalidate();
     return presentExperienceAdmin(row);
   }
 
   async removeExperience(id: string) {
     await this.deleteExperience.execute(id);
+    this.listFeed.invalidate();
     return { ok: true as const };
   }
 
   async addHost(input: HostCreate) {
     const row = await this.createHost.execute(input);
+    this.listFeed.invalidate();
     return presentHostSummary(row);
   }
 
   async patchHost(id: string, patch: HostPatch) {
     const row = await this.updateHost.execute(id, patch);
+    this.listFeed.invalidate();
     return presentHostSummary(row);
   }
 
   async removeHost(id: string) {
     await this.deleteHost.execute(id);
+    this.listFeed.invalidate();
     return { ok: true as const };
   }
 
@@ -141,6 +157,7 @@ export class CatalogService {
       experienceId,
       ...file,
     });
+    this.listFeed.invalidate();
     return presentExperienceAdmin(row);
   }
 
@@ -162,6 +179,7 @@ export class CatalogService {
       hostId,
       ...file,
     });
+    this.listFeed.invalidate();
     return presentHostSummary(row);
   }
 }

@@ -56,6 +56,15 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     },
   );
 
+  app.post("/v1/admin/cache/feed/refresh", async (_req, reply) => {
+    try {
+      const body = await deps.catalog.refreshFeed();
+      return reply.send(body);
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.post<{ Body: ExperienceCreate }>(
     "/v1/admin/experiences",
     async (req, reply) => {
