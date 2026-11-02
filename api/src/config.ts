@@ -21,10 +21,11 @@ export type ApiConfig = z.infer<typeof schema>;
 
 function parseCorsOrigins(raw: string | undefined): string[] {
   const value =
-    raw ?? "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001";
+    raw ??
+    "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://discovr-admin.vercel.app,https://discovr-frontend-phi.vercel.app";
   return value
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => s.trim().replace(/\/$/, ""))
     .filter(Boolean);
 }
 
