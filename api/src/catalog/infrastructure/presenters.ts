@@ -19,6 +19,7 @@ export function presentExperience(e: Experience) {
     price: e.price,
     place: {
       name: e.place.name,
+      neighborhood: e.place.neighborhood,
       lat: e.place.lat,
       lng: e.place.lng,
     },
