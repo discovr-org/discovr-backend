@@ -445,7 +445,7 @@ type DbRow = Record<string, unknown>;
 
 function mapExperience(row: DbRow): Experience {
   const host = row.host as DbRow;
-  const photos = ((row.photos as DbRow[]) ?? [])
+  let photos = ((row.photos as DbRow[]) ?? [])
     .slice()
     .sort((a, b) => Number(a.sort_order) - Number(b.sort_order))
     .map(
@@ -454,6 +454,14 @@ function mapExperience(row: DbRow): Experience {
         alt: String(p.alt),
       }),
     );
+  if (!photos.length && row.cover_photo_url) {
+    photos = [
+      {
+        src: String(row.cover_photo_url),
+        alt: String(row.cover_photo_alt ?? row.title ?? "Cover"),
+      },
+    ];
+  }
 
   const inclusions = ((row.inclusions as DbRow[]) ?? [])
     .slice()
