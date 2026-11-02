@@ -131,7 +131,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     const { data, error } = await this.db
       .from("hosts")
       .select(
-        "id, business_name, person_name, phone_e164, experience_count, active, avatar_url, avatar_alt",
+        "id, business_name, person_name, phone_e164, experience_count, active, avatar_url, avatar_alt, credit",
       )
       .order("business_name", { ascending: true });
 
@@ -156,6 +156,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
       active: row.active !== false,
       avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
       avatarAlt: row.avatar_alt ? String(row.avatar_alt) : undefined,
+      credit: parseHostCredit(row.credit),
     }));
   }
 
@@ -200,6 +201,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
   }
 
   async createHost(input: HostCreate): Promise<HostSummary> {
+    const credit = input.credit ?? "hosted";
     const { data, error } = await this.db
       .from("hosts")
       .insert({
@@ -209,8 +211,9 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         active: input.active ?? true,
         verified: false,
         languages: [],
+        credit,
       })
-      .select("id, business_name, person_name, phone_e164, active")
+      .select("id, business_name, person_name, phone_e164, active, credit")
       .single();
 
     if (error) throw error;
@@ -222,6 +225,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
       phone: String(data.phone_e164),
       experienceCount: 0,
       active: data.active !== false,
+      credit: parseHostCredit(data.credit),
     };
   }
 
@@ -377,6 +381,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     if (patch.active !== undefined) payload.active = patch.active;
     if (patch.avatarUrl !== undefined) payload.avatar_url = patch.avatarUrl;
     if (patch.avatarAlt !== undefined) payload.avatar_alt = patch.avatarAlt;
+    if (patch.credit !== undefined) payload.credit = patch.credit;
 
     const { error } = await this.db.from("hosts").update(payload).eq("id", id);
     if (error) throw error;
@@ -439,6 +444,16 @@ function mapAdmin(row: DbRow): ExperienceAdmin {
 function normalizeStatus(value: unknown): ExperienceStatus {
   if (value === "draft" || value === "archived") return value;
   return "published";
+}
+
+function parseHostCredit(value: unknown): "hosted" | "run" | "owned" {
+  if (value === "run" || value === "owned" || value === "hosted") return value;
+  return "hosted";
+}
+
+function parsePriceTaxes(value: unknown): "extra" | "inclusive" {
+  if (value === "extra" || value === "inclusive") return value;
+  return "inclusive";
 }
 
 type DbRow = Record<string, unknown>;
@@ -540,6 +555,7 @@ function mapExperience(row: DbRow): Experience {
       experienceCount:
         host.experience_count != null ? Number(host.experience_count) : undefined,
       languages: (host.languages as string[]) ?? [],
+      credit: parseHostCredit(host.credit),
     },
     photos,
     verdict: String(row.verdict ?? ""),
@@ -547,6 +563,9 @@ function mapExperience(row: DbRow): Experience {
       fromAmount: Number(row.price_from_inr),
       paidTo: String(row.price_paid_to),
       askForPrice: Boolean(row.price_ask) || undefined,
+      taxes: parsePriceTaxes(
+        (row.content as ExperienceContent | null | undefined)?.taxes,
+      ),
     },
     place: {
       name: String(row.place_name),
@@ -607,10 +626,10 @@ function mapFeedSection(row: DbRow): FeedSection {
 }
 
 function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} mins`;
   const hours = minutes / 60;
-  if (Number.isInteger(hours)) return hours === 1 ? "1 hour" : `${hours} hours`;
+  if (Number.isInteger(hours)) return hours === 1 ? "1 hr" : `${hours} hrs`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return `${h} hour${h === 1 ? "" : "s"} ${m} min`;
+  return `${h} hr${h === 1 ? "" : "s"} ${m} mins`;
 }

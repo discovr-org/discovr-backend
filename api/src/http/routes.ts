@@ -291,6 +291,7 @@ function sanitizeHostPatch(body: HostPatch): HostPatch {
   else if (typeof body.avatarUrl === "string") patch.avatarUrl = body.avatarUrl;
   if (body.avatarAlt === null) patch.avatarAlt = null;
   else if (typeof body.avatarAlt === "string") patch.avatarAlt = body.avatarAlt;
+  if (isHostCredit(body.credit)) patch.credit = body.credit;
   return patch;
 }
 
@@ -301,7 +302,12 @@ function sanitizeHostCreate(body: HostCreate): HostCreate {
     personName: typeof body.personName === "string" ? body.personName : "",
     phone: typeof body.phone === "string" ? body.phone : "",
     active: typeof body.active === "boolean" ? body.active : true,
+    credit: isHostCredit(body.credit) ? body.credit : "hosted",
   };
+}
+
+function isHostCredit(value: unknown): value is "hosted" | "run" | "owned" {
+  return value === "hosted" || value === "run" || value === "owned";
 }
 
 function sanitizeExperienceCreate(body: ExperienceCreate): ExperienceCreate {

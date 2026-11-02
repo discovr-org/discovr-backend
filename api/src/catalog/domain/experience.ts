@@ -8,6 +8,9 @@ export type Photo = {
   alt: string;
 };
 
+/** Guest UI prefix: "Hosted by" / "Run by" / "Owned by". */
+export type HostCredit = "hosted" | "run" | "owned";
+
 export type Host = {
   businessName: string;
   personName: string;
@@ -17,12 +20,17 @@ export type Host = {
   verified: boolean;
   experienceCount?: number;
   languages: string[];
+  credit?: HostCredit;
 };
+
+export type PriceTaxes = "extra" | "inclusive";
 
 export type Price = {
   fromAmount: number;
   paidTo: string;
   askForPrice?: boolean;
+  /** Guest UI: "+ taxes" or "inclusive of taxes". */
+  taxes?: PriceTaxes;
 };
 
 export type Place = {
@@ -49,6 +57,8 @@ export type Policy = {
   summary: string;
   booking: string[];
   cancellation: string[];
+  /** Guest note under policy: "Check the final terms on {host} before paying." */
+  showFinalTermsNote?: boolean;
 };
 
 export type Review = {
@@ -80,6 +90,9 @@ export type ExperienceContent = {
   locationLabel?: string;
   priceNarrative?: string;
   priceUnit?: string;
+  taxes?: PriceTaxes;
+  /** trip = kayak/tour; venue = bar/restaurant (no trip times / people). */
+  format?: "trip" | "venue";
   meetingPoint?: string;
   droppingPoint?: string;
   durationLabel?: string;
@@ -148,6 +161,7 @@ export type HostSummary = {
   active: boolean;
   avatarUrl?: string;
   avatarAlt?: string;
+  credit: HostCredit;
 };
 
 /** Sheet-shaped schedule bag stored on experiences.schedule jsonb. */
@@ -215,6 +229,7 @@ export type HostPatch = {
   active?: boolean;
   avatarUrl?: string | null;
   avatarAlt?: string | null;
+  credit?: HostCredit;
 };
 
 /** Create a host from admin. */
@@ -223,6 +238,7 @@ export type HostCreate = {
   personName: string;
   phone: string;
   active?: boolean;
+  credit?: HostCredit;
 };
 
 /** Create a listing from admin (draft by default). */

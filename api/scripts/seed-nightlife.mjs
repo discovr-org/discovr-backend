@@ -105,6 +105,8 @@ const experiences = [
       cancellation: [],
     },
     content: {
+      format: "venue",
+      taxes: "inclusive",
       aka: "Raeeth Goa; R A È É T H",
       priceNarrative:
         "Weekday rates: Couples ₹3,000 (9–10 PM) / ₹5,000 (10–11 PM). Women free until 10 PM, ₹2,000 after. Stags ₹5,000. After 11 PM, couples’ pricing includes separate entry and cover portions.",
@@ -170,6 +172,8 @@ const experiences = [
       cancellation: [],
     },
     content: {
+      format: "venue",
+      taxes: "inclusive",
       aka: "The Loft Goa; The Loft at moyo Ānamiva; BudXLoft / Budxloft.",
       priceNarrative: "₹1,000 entry on Fridays and Saturdays.",
       priceUnit: "Entry fee.",
@@ -234,6 +238,8 @@ const experiences = [
       cancellation: [],
     },
     content: {
+      format: "venue",
+      taxes: "inclusive",
       aka: "JUNA Sound Room",
       priceNarrative: "Entry: ₹700; ₹900 after 1 AM. This is an entry fee, not a redeemable cover.",
       priceUnit: "Entry only. Food and drinks are charged separately.",
@@ -294,6 +300,8 @@ const experiences = [
       cancellation: [],
     },
     content: {
+      format: "venue",
+      taxes: "inclusive",
       aka: "Hideaway Cafe and Bar",
       priceNarrative: "Average cost for two: ₹1,900. Cover about ₹500.",
       priceUnit: "Cover plus food and drinks.",

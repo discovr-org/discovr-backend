@@ -25,6 +25,7 @@ type MemoryHost = {
   active: boolean;
   avatarUrl?: string;
   avatarAlt?: string;
+  credit: "hosted" | "run" | "owned";
 };
 
 export class MemoryExperienceRepository implements ExperienceRepository {
@@ -49,6 +50,7 @@ export class MemoryExperienceRepository implements ExperienceRepository {
           personName: e.host.personName,
           phone: e.host.phone,
           active: true,
+          credit: e.host.credit ?? "hosted",
         });
       }
       this.experienceHostId.set(e.id, id);
@@ -120,6 +122,7 @@ export class MemoryExperienceRepository implements ExperienceRepository {
       active: h.active,
       avatarUrl: h.avatarUrl,
       avatarAlt: h.avatarAlt,
+      credit: h.credit,
     }));
   }
 
@@ -248,12 +251,14 @@ export class MemoryExperienceRepository implements ExperienceRepository {
 
   async createHost(input: HostCreate): Promise<HostSummary> {
     const id = crypto.randomUUID();
+    const credit = input.credit ?? "hosted";
     this.hosts.set(id, {
       id,
       businessName: input.businessName,
       personName: input.personName,
       phone: input.phone,
       active: input.active ?? true,
+      credit,
     });
     return {
       id,
@@ -262,6 +267,7 @@ export class MemoryExperienceRepository implements ExperienceRepository {
       phone: input.phone,
       experienceCount: 0,
       active: input.active ?? true,
+      credit,
     };
   }
 
@@ -285,12 +291,14 @@ export class MemoryExperienceRepository implements ExperienceRepository {
     if (patch.avatarAlt !== undefined) {
       host.avatarAlt = patch.avatarAlt || undefined;
     }
+    if (patch.credit !== undefined) host.credit = patch.credit;
 
     for (const e of this.experiences) {
       if (this.experienceHostId.get(e.id) === id) {
         e.host.businessName = host.businessName;
         e.host.personName = host.personName;
         e.host.phone = host.phone;
+        e.host.credit = host.credit;
         e.host.avatar = host.avatarUrl
           ? {
               src: host.avatarUrl,
@@ -311,6 +319,7 @@ export class MemoryExperienceRepository implements ExperienceRepository {
       active: host.active,
       avatarUrl: host.avatarUrl,
       avatarAlt: host.avatarAlt,
+      credit: host.credit,
     };
   }
 
