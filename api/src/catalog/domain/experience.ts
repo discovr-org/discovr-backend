@@ -205,10 +205,28 @@ export type ExperienceAdmin = {
   hostBusinessName: string;
   coverPhotoUrl?: string;
   coverPhotoAlt?: string;
+  /** Carousel, in order. */
+  photos: AdminPhoto[];
+  /** Menu images, in order. */
+  menuPages: AdminMenuPage[];
   tags: string[];
   schedule: ListingSchedule;
   policy: Policy | null;
   content: ExperienceContent;
+};
+
+export type AdminPhoto = {
+  id: string;
+  src: string;
+  alt: string;
+  isCover: boolean;
+};
+
+export type AdminMenuPage = {
+  id: string;
+  src: string;
+  label: string;
+  alt: string;
 };
 
 export type ExperiencePatch = {

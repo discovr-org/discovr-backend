@@ -1,3 +1,4 @@
+import type { ExperienceMediaRepository } from "../../application/ports/experience-media-repository.js";
 import type { ExperienceRepository } from "../../application/ports/experience-repository.js";
 import type {
   Experience,
@@ -10,6 +11,8 @@ import type {
   HostCreate,
   HostPatch,
   HostSummary,
+  MenuPage,
+  Photo,
 } from "../../domain/experience.js";
 import { seedExperiences } from "./seed.js";
 
@@ -28,7 +31,20 @@ type MemoryHost = {
   credit: "hosted" | "run" | "owned";
 };
 
-export class MemoryExperienceRepository implements ExperienceRepository {
+function reorder<T>(
+  rows: T[],
+  items: Array<{ id: string }>,
+  idOf: (row: T) => string,
+): T[] {
+  const byId = new Map(rows.map((r) => [idOf(r), r]));
+  return items.map((i) => byId.get(i.id)).filter((r): r is T => r !== undefined);
+}
+
+export class MemoryExperienceRepository
+  implements ExperienceRepository, ExperienceMediaRepository
+{
+  private readonly mediaIds = new WeakMap<object, string>();
+  private readonly coverIds = new Map<string, string>();
   private readonly statuses = new Map<string, ExperienceStatus>();
   private readonly groupSizeMax = new Map<string, number>();
   private readonly covers = new Map<string, { url: string; alt: string }>();
@@ -234,10 +250,6 @@ export class MemoryExperienceRepository implements ExperienceRepository {
           url: patch.coverPhotoUrl,
           alt: patch.coverPhotoAlt?.trim() || e.title,
         });
-        e.photos = [
-          { src: patch.coverPhotoUrl, alt: patch.coverPhotoAlt?.trim() || e.title },
-          ...e.photos.filter((p) => p.src !== patch.coverPhotoUrl),
-        ];
       }
     }
 
@@ -338,6 +350,69 @@ export class MemoryExperienceRepository implements ExperienceRepository {
     this.hosts.delete(id);
   }
 
+  async addPhoto(experienceId: string, photo: Photo): Promise<void> {
+    this.find(experienceId).photos.push({ ...photo });
+  }
+
+  async setPhotos(
+    experienceId: string,
+    items: Array<{ id: string; alt: string }>,
+    coverId: string | null,
+  ): Promise<void> {
+    const e = this.find(experienceId);
+    e.photos = reorder(e.photos, items, (p) => this.mediaId(p)).map((p, i) => {
+      p.alt = items[i].alt;
+      return p;
+    });
+    if (coverId) this.coverIds.set(experienceId, coverId);
+    else this.coverIds.delete(experienceId);
+  }
+
+  async deletePhoto(experienceId: string, photoId: string): Promise<void> {
+    const e = this.find(experienceId);
+    e.photos = e.photos.filter((p) => this.mediaId(p) !== photoId);
+  }
+
+  async addMenuPage(experienceId: string, page: MenuPage): Promise<void> {
+    const e = this.find(experienceId);
+    e.menu = { pages: [...(e.menu?.pages ?? []), { ...page }] };
+  }
+
+  async setMenuPages(
+    experienceId: string,
+    items: Array<{ id: string; label: string; alt: string }>,
+  ): Promise<void> {
+    const e = this.find(experienceId);
+    const pages = reorder(e.menu?.pages ?? [], items, (p) => this.mediaId(p));
+    pages.forEach((p, i) => {
+      p.label = items[i].label;
+      p.alt = items[i].alt;
+    });
+    e.menu = { pages };
+  }
+
+  async deleteMenuPage(experienceId: string, pageId: string): Promise<void> {
+    const e = this.find(experienceId);
+    e.menu = {
+      pages: (e.menu?.pages ?? []).filter((p) => this.mediaId(p) !== pageId),
+    };
+  }
+
+  private find(id: string): Experience {
+    const e = this.experiences.find((x) => x.id === id);
+    if (!e) throw new Error(`Experience ${id} not found`);
+    return e;
+  }
+
+  private mediaId(item: object): string {
+    let id = this.mediaIds.get(item);
+    if (!id) {
+      id = crypto.randomUUID();
+      this.mediaIds.set(item, id);
+    }
+    return id;
+  }
+
   private toAdmin(e: Experience): ExperienceAdmin {
     const schedule = e.schedule as ExperienceAdmin["schedule"];
     const hostId = this.experienceHostId.get(e.id) ?? "";
@@ -360,6 +435,18 @@ export class MemoryExperienceRepository implements ExperienceRepository {
       hostBusinessName: e.host.businessName,
       coverPhotoUrl: this.covers.get(e.id)?.url ?? e.photos[0]?.src,
       coverPhotoAlt: this.covers.get(e.id)?.alt ?? e.photos[0]?.alt,
+      photos: e.photos.map((p) => ({
+        id: this.mediaId(p),
+        src: p.src,
+        alt: p.alt,
+        isCover: this.coverIds.get(e.id) === this.mediaId(p),
+      })),
+      menuPages: (e.menu?.pages ?? []).map((p) => ({
+        id: this.mediaId(p),
+        src: p.src,
+        label: p.label,
+        alt: p.alt,
+      })),
       tags: [...e.tags],
       schedule: schedule ?? {},
       policy: e.policy ?? null,

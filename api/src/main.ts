@@ -8,6 +8,7 @@ import { MemoryOtpRepository } from "./auth/infrastructure/memory/otp-repository
 import { MemorySessionRepository } from "./auth/infrastructure/memory/session-repository.js";
 import { SupabaseOtpRepository } from "./auth/infrastructure/supabase/otp-repository.js";
 import { SupabaseSessionRepository } from "./auth/infrastructure/supabase/session-repository.js";
+import type { ExperienceMediaRepository } from "./catalog/application/ports/experience-media-repository.js";
 import type { ExperienceRepository } from "./catalog/application/ports/experience-repository.js";
 import type { ImageUploader } from "./catalog/application/ports/image-uploader.js";
 import { CatalogService } from "./catalog/api/catalog-service.js";
@@ -15,6 +16,7 @@ import { CloudflareImagesUploader } from "./catalog/infrastructure/cloudflare/im
 import { R2ImageUploader } from "./catalog/infrastructure/cloudflare/r2-uploader.js";
 import { MemoryExperienceRepository } from "./catalog/infrastructure/memory/experience-repository.js";
 import { createSupabaseAdmin } from "./catalog/infrastructure/supabase/client.js";
+import { SupabaseExperienceMediaRepository } from "./catalog/infrastructure/supabase/experience-media-repository.js";
 import { SupabaseExperienceRepository } from "./catalog/infrastructure/supabase/experience-repository.js";
 import { CommunicationService } from "./communication/api/communication-service.js";
 import type { SmsSender } from "./communication/application/ports/sms-sender.js";
@@ -48,7 +50,8 @@ async function main() {
   const db = config.catalogDataSource === "supabase" ? createSupabaseAdmin() : null;
 
   const images = createImageUploader(config);
-  const catalog = new CatalogService(createCatalogRepository(config, db), images);
+  const catalogStore = createCatalogRepositories(config, db);
+  const catalog = new CatalogService(catalogStore.repo, catalogStore.media, images);
 
   const authSource = config.authDataSource ?? config.catalogDataSource;
   const users = new UserService(
@@ -66,14 +69,18 @@ async function main() {
   await app.listen({ port: config.port, host: "0.0.0.0" });
 }
 
-function createCatalogRepository(
+function createCatalogRepositories(
   config: ApiConfig,
   db: ReturnType<typeof createSupabaseAdmin> | null,
-): ExperienceRepository {
+): { repo: ExperienceRepository; media: ExperienceMediaRepository } {
   if (config.catalogDataSource === "memory" || !db) {
-    return new MemoryExperienceRepository();
+    const memory = new MemoryExperienceRepository();
+    return { repo: memory, media: memory };
   }
-  return new SupabaseExperienceRepository(db);
+  return {
+    repo: new SupabaseExperienceRepository(db),
+    media: new SupabaseExperienceMediaRepository(db),
+  };
 }
 
 function createUserRepository(

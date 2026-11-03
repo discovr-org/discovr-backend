@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AuthService } from "../auth/api/auth-service.js";
 import type { CatalogService } from "../catalog/api/catalog-service.js";
 import type {
@@ -120,18 +120,10 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     "/v1/admin/experiences/:id/cover",
     async (req, reply) => {
       try {
-        const file = await req.file();
-        if (!file) {
-          throw new ValidationError("Attach an image file.");
-        }
-        const bytes = await file.toBuffer();
-        const altField = (file.fields as Record<string, { value?: string }>)
-          ?.alt?.value;
+        const { file, fields } = await readImageUpload(req);
         const body = await deps.catalog.uploadCover(req.params.id, {
-          bytes,
-          filename: file.filename || "cover.jpg",
-          contentType: file.mimetype || "application/octet-stream",
-          alt: typeof altField === "string" ? altField : undefined,
+          ...file,
+          alt: fields.alt,
         });
         return reply.send(body);
       } catch (err) {
@@ -139,6 +131,108 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
       }
     },
   );
+
+  app.post<{ Params: { id: string } }>(
+    "/v1/admin/experiences/:id/photos",
+    async (req, reply) => {
+      try {
+        const { file, fields } = await readImageUpload(req);
+        const body = await deps.catalog.uploadPhoto(req.params.id, file, {
+          alt: fields.alt,
+          makeCover: fields.cover === "true",
+        });
+        return reply.status(201).send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
+  app.put<{
+    Params: { id: string };
+    Body: { photos?: unknown; coverId?: unknown };
+  }>("/v1/admin/experiences/:id/photos", async (req, reply) => {
+    try {
+      const photos = readMediaItems(req.body?.photos, ["alt"]);
+      const coverId =
+        typeof req.body?.coverId === "string" && req.body.coverId
+          ? req.body.coverId
+          : null;
+      const body = await deps.catalog.savePhotos(req.params.id, photos, coverId);
+      return reply.send(body);
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
+  app.delete<{ Params: { id: string; photoId: string } }>(
+    "/v1/admin/experiences/:id/photos/:photoId",
+    async (req, reply) => {
+      try {
+        const body = await deps.catalog.removePhoto(
+          req.params.id,
+          req.params.photoId,
+        );
+        return reply.send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/v1/admin/experiences/:id/menu-pages",
+    async (req, reply) => {
+      try {
+        const { file, fields } = await readImageUpload(req);
+        const body = await deps.catalog.uploadMenuPage(req.params.id, file, {
+          label: fields.label,
+          alt: fields.alt,
+        });
+        return reply.status(201).send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
+  app.put<{ Params: { id: string }; Body: { pages?: unknown } }>(
+    "/v1/admin/experiences/:id/menu-pages",
+    async (req, reply) => {
+      try {
+        const pages = readMediaItems(req.body?.pages, ["label", "alt"]);
+        const body = await deps.catalog.saveMenuPages(req.params.id, pages);
+        return reply.send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string; pageId: string } }>(
+    "/v1/admin/experiences/:id/menu-pages/:pageId",
+    async (req, reply) => {
+      try {
+        const body = await deps.catalog.removeMenuPage(
+          req.params.id,
+          req.params.pageId,
+        );
+        return reply.send(body);
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
+  app.post("/v1/admin/images", async (req, reply) => {
+    try {
+      const { file } = await readImageUpload(req);
+      const body = await deps.catalog.uploadImage(file);
+      return reply.status(201).send(body);
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
 
   app.post<{ Body: HostCreate }>(
     "/v1/admin/hosts",
@@ -158,18 +252,10 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     "/v1/admin/hosts/:id/avatar",
     async (req, reply) => {
       try {
-        const file = await req.file();
-        if (!file) {
-          throw new ValidationError("Attach an image file.");
-        }
-        const bytes = await file.toBuffer();
-        const altField = (file.fields as Record<string, { value?: string }>)
-          ?.alt?.value;
+        const { file, fields } = await readImageUpload(req);
         const body = await deps.catalog.uploadAvatar(req.params.id, {
-          bytes,
-          filename: file.filename || "avatar.jpg",
-          contentType: file.mimetype || "application/octet-stream",
-          alt: typeof altField === "string" ? altField : undefined,
+          ...file,
+          alt: fields.alt,
         });
         return reply.send(body);
       } catch (err) {
@@ -360,4 +446,43 @@ function sanitizeExperienceCreate(body: ExperienceCreate): ExperienceCreate {
 
 function isStatus(value: unknown): value is ExperienceStatus {
   return value === "draft" || value === "published" || value === "archived";
+}
+
+/** Text fields only arrive if the client appends them before the file. */
+async function readImageUpload(req: FastifyRequest) {
+  const part = await req.file();
+  if (!part) throw new ValidationError("Attach an image file.");
+  const fields: Record<string, string | undefined> = {};
+  for (const [name, field] of Object.entries(part.fields ?? {})) {
+    const value = (field as { value?: unknown } | undefined)?.value;
+    if (typeof value === "string") fields[name] = value;
+  }
+  return {
+    file: {
+      bytes: await part.toBuffer(),
+      filename: part.filename || "image.jpg",
+      contentType: part.mimetype || "application/octet-stream",
+    },
+    fields,
+  };
+}
+
+function readMediaItems<K extends string>(
+  value: unknown,
+  keys: K[],
+): Array<{ id: string } & Partial<Record<K, string>>> {
+  if (!Array.isArray(value)) throw new ValidationError("Send the full list, in order.");
+  return value.map((raw) => {
+    const item = (raw ?? {}) as Record<string, unknown>;
+    if (typeof item.id !== "string" || !item.id) {
+      throw new ValidationError("Every item needs an id.");
+    }
+    const out = { id: item.id } as { id: string } & Partial<Record<K, string>>;
+    for (const key of keys) {
+      if (typeof item[key] === "string") {
+        (out as Record<string, string>)[key] = item[key] as string;
+      }
+    }
+    return out;
+  });
 }

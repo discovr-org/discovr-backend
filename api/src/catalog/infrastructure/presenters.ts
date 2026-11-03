@@ -91,6 +91,8 @@ export function presentExperienceAdmin(row: ExperienceAdmin) {
     hostBusinessName: row.hostBusinessName,
     coverPhotoUrl: row.coverPhotoUrl,
     coverPhotoAlt: row.coverPhotoAlt,
+    photos: row.photos,
+    menuPages: row.menuPages,
     tags: row.tags,
     schedule: row.schedule,
     policy: row.policy,

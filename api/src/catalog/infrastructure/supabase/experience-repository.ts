@@ -66,7 +66,8 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         about,
         verdict,
         format:content->>format,
-        host:hosts(active)
+        host:hosts(active),
+        photos:experience_photos(src, alt, sort_order, is_cover)
       `,
       )
       .eq("status", "published");
@@ -243,7 +244,9 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         cover_photo_url,
         cover_photo_alt,
         host:hosts(business_name),
-        tags:experience_tags(tag)
+        tags:experience_tags(tag),
+        photos:experience_photos(id, src, alt, sort_order, is_cover),
+        menu_pages:experience_menu_pages(id, src, label, alt, sort_order)
       `,
       )
       .eq("id", id)
@@ -307,20 +310,6 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     if (error) {
       if (error.code === "23505") throw new Error("Slug already taken");
       throw error;
-    }
-
-    if (patch.coverPhotoUrl) {
-      await this.db
-        .from("experience_photos")
-        .update({ is_cover: false })
-        .eq("experience_id", id);
-      await this.db.from("experience_photos").insert({
-        experience_id: id,
-        src: patch.coverPhotoUrl,
-        alt: patch.coverPhotoAlt?.trim() || "Cover",
-        sort_order: 0,
-        is_cover: true,
-      });
     }
 
     if (patch.tags !== undefined) {
@@ -422,6 +411,18 @@ function mapAdmin(row: DbRow): ExperienceAdmin {
     coverPhotoAlt: row.cover_photo_alt
       ? String(row.cover_photo_alt)
       : undefined,
+    photos: bySortOrder(row.photos).map((p) => ({
+      id: String(p.id),
+      src: String(p.src),
+      alt: String(p.alt ?? ""),
+      isCover: Boolean(p.is_cover),
+    })),
+    menuPages: bySortOrder(row.menu_pages).map((p) => ({
+      id: String(p.id),
+      src: String(p.src),
+      label: String(p.label ?? ""),
+      alt: String(p.alt ?? ""),
+    })),
     tags: ((row.tags as { tag: string }[]) ?? []).map((t) => t.tag),
     schedule: (row.schedule as ExperienceAdmin["schedule"]) ?? {},
     policy: (row.policy as ExperienceAdmin["policy"]) ?? null,
@@ -574,14 +575,24 @@ function mapExperience(row: DbRow): Experience {
   };
 }
 
+function bySortOrder(rows: unknown): DbRow[] {
+  return ((rows as DbRow[] | null) ?? [])
+    .slice()
+    .sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
+}
+
 function mapListingCard(row: DbRow): ListingCard {
   const minutes = Number(row.duration_minutes);
+  const photos = bySortOrder(row.photos);
+  const photo = photos.find((p) => p.is_cover) ?? photos[0];
+  const imageSrc = row.cover_photo_url ?? photo?.src;
+  const imageAlt = row.cover_photo_url ? row.cover_photo_alt : photo?.alt;
   return {
     slug: String(row.slug),
     title: String(row.title),
     placeLabel: String(row.place_neighborhood ?? ""),
-    imageSrc: row.cover_photo_url ? String(row.cover_photo_url) : undefined,
-    imageAlt: row.cover_photo_alt ? String(row.cover_photo_alt) : undefined,
+    imageSrc: imageSrc ? String(imageSrc) : undefined,
+    imageAlt: imageAlt ? String(imageAlt) : undefined,
     priceInr: row.price_ask ? undefined : Number(row.price_from_inr),
     priceAsk: Boolean(row.price_ask) || undefined,
     blurb: String(row.verdict || row.about || "") || undefined,

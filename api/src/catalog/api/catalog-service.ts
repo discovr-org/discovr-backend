@@ -11,8 +11,16 @@ import type { ExperienceRepository } from "../application/ports/experience-repos
 import type { ImageUploader } from "../application/ports/image-uploader.js";
 import { UpdateExperience } from "../application/update-experience.js";
 import { UpdateHost } from "../application/update-host.js";
-import { UploadExperienceCover } from "../application/upload-experience-cover.js";
+import { UploadContentImage } from "../application/upload-content-image.js";
 import { UploadHostAvatar } from "../application/upload-host-avatar.js";
+import { AddExperiencePhoto } from "../application/add-experience-photo.js";
+import { AddMenuPage } from "../application/add-menu-page.js";
+import { DeleteExperiencePhoto } from "../application/delete-experience-photo.js";
+import { DeleteMenuPage } from "../application/delete-menu-page.js";
+import type { ImageFile } from "../application/image-file.js";
+import type { ExperienceMediaRepository } from "../application/ports/experience-media-repository.js";
+import { UpdateExperiencePhotos } from "../application/update-experience-photos.js";
+import { UpdateMenuPages } from "../application/update-menu-pages.js";
 import type {
   ExperienceCreate,
   ExperiencePatch,
@@ -42,11 +50,18 @@ export class CatalogService {
   private readonly createHost: CreateHost;
   private readonly updateHost: UpdateHost;
   private readonly deleteHost: DeleteHost;
-  private readonly uploadExperienceCover: UploadExperienceCover | null;
+  private readonly addExperiencePhoto: AddExperiencePhoto | null;
+  private readonly updateExperiencePhotos: UpdateExperiencePhotos;
+  private readonly deleteExperiencePhoto: DeleteExperiencePhoto;
+  private readonly addMenuPage: AddMenuPage | null;
+  private readonly updateMenuPages: UpdateMenuPages;
+  private readonly deleteMenuPage: DeleteMenuPage;
+  private readonly uploadContentImage: UploadContentImage | null;
   private readonly uploadHostAvatar: UploadHostAvatar | null;
 
   constructor(
     repo: ExperienceRepository,
+    media: ExperienceMediaRepository,
     images: ImageUploader | null = null,
   ) {
     this.getExperience = new GetExperience(repo);
@@ -60,9 +75,15 @@ export class CatalogService {
     this.createHost = new CreateHost(repo);
     this.updateHost = new UpdateHost(repo);
     this.deleteHost = new DeleteHost(repo);
-    this.uploadExperienceCover = images
-      ? new UploadExperienceCover(repo, images)
+    this.addExperiencePhoto = images
+      ? new AddExperiencePhoto(repo, media, images)
       : null;
+    this.updateExperiencePhotos = new UpdateExperiencePhotos(repo, media);
+    this.deleteExperiencePhoto = new DeleteExperiencePhoto(repo, media);
+    this.addMenuPage = images ? new AddMenuPage(repo, media, images) : null;
+    this.updateMenuPages = new UpdateMenuPages(repo, media);
+    this.deleteMenuPage = new DeleteMenuPage(repo, media);
+    this.uploadContentImage = images ? new UploadContentImage(images) : null;
     this.uploadHostAvatar = images
       ? new UploadHostAvatar(repo, images)
       : null;
@@ -135,47 +156,87 @@ export class CatalogService {
     return { ok: true as const };
   }
 
-  async uploadCover(
+  /** Adds the image as a carousel photo and makes it the cover. */
+  async uploadCover(experienceId: string, file: ImageFile & { alt?: string }) {
+    return this.uploadPhoto(experienceId, file, { alt: file.alt, makeCover: true });
+  }
+
+  async uploadPhoto(
     experienceId: string,
-    file: {
-      bytes: Buffer;
-      filename: string;
-      contentType: string;
-      alt?: string;
-    },
+    file: ImageFile,
+    options: { alt?: string; makeCover?: boolean } = {},
   ) {
-    if (!this.uploadExperienceCover) {
-      throw new ValidationError(
-        "Image uploads aren't configured. Set the R2_* variables (or CLOUDFLARE_TOKEN).",
-      );
-    }
-    const row = await this.uploadExperienceCover.execute({
+    const row = await requireUploads(this.addExperiencePhoto).execute({
       experienceId,
-      ...file,
+      file,
+      ...options,
     });
     this.listCards.invalidate();
     return presentExperienceAdmin(row);
   }
 
-  async uploadAvatar(
-    hostId: string,
-    file: {
-      bytes: Buffer;
-      filename: string;
-      contentType: string;
-      alt?: string;
-    },
+  async savePhotos(
+    experienceId: string,
+    items: Array<{ id: string; alt?: string }>,
+    coverId: string | null,
   ) {
-    if (!this.uploadHostAvatar) {
-      throw new ValidationError(
-        "Image uploads aren't configured. Set the R2_* variables (or CLOUDFLARE_TOKEN).",
-      );
-    }
-    const row = await this.uploadHostAvatar.execute({
+    const row = await this.updateExperiencePhotos.execute(experienceId, items, coverId);
+    this.listCards.invalidate();
+    return presentExperienceAdmin(row);
+  }
+
+  async removePhoto(experienceId: string, photoId: string) {
+    const row = await this.deleteExperiencePhoto.execute(experienceId, photoId);
+    this.listCards.invalidate();
+    return presentExperienceAdmin(row);
+  }
+
+  async uploadMenuPage(
+    experienceId: string,
+    file: ImageFile,
+    options: { label?: string; alt?: string } = {},
+  ) {
+    const row = await requireUploads(this.addMenuPage).execute({
+      experienceId,
+      file,
+      ...options,
+    });
+    return presentExperienceAdmin(row);
+  }
+
+  async saveMenuPages(
+    experienceId: string,
+    items: Array<{ id: string; label?: string; alt?: string }>,
+  ) {
+    const row = await this.updateMenuPages.execute(experienceId, items);
+    return presentExperienceAdmin(row);
+  }
+
+  async removeMenuPage(experienceId: string, pageId: string) {
+    const row = await this.deleteMenuPage.execute(experienceId, pageId);
+    return presentExperienceAdmin(row);
+  }
+
+  /** Upload a story image; returns `{ url }` for the caller to save into `content.blocks`. */
+  async uploadImage(file: ImageFile) {
+    return requireUploads(this.uploadContentImage).execute(file);
+  }
+
+  async uploadAvatar(hostId: string, file: ImageFile & { alt?: string }) {
+    const row = await requireUploads(this.uploadHostAvatar).execute({
       hostId,
       ...file,
     });
     this.listCards.invalidate();
     return presentHostSummary(row);
   }
+}
+
+function requireUploads<T>(useCase: T | null): T {
+  if (!useCase) {
+    throw new ValidationError(
+      "Image uploads aren't configured. Set the R2_* variables (or CLOUDFLARE_TOKEN).",
+    );
+  }
+  return useCase;
 }
