@@ -11,7 +11,7 @@ type R2Config = {
   accessKeyId: string;
   secretAccessKey: string;
   bucket: string;
-  /** Public origin serving the bucket, e.g. https://media.discovr.in */
+  /** Public origin serving the bucket, e.g. https://cdn.discovr.in */
   publicBaseUrl: string;
 };
 
