@@ -122,6 +122,8 @@ export type ExperienceContent = {
   faqs?: Array<{ q: string; a: string }>;
   /** "link" = booking opens `links.book`; otherwise guests call the host. */
   bookVia?: "call" | "link";
+  /** true = the app skips photo blocks in the story. */
+  hideStoryPhotos?: boolean;
   links?: {
     maps?: ContentLink;
     book?: ContentLink;
