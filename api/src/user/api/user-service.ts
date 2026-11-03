@@ -13,10 +13,12 @@ import {
   SubmitHostApplication,
   type HostApplicationInput,
 } from "../application/submit-host-application.js";
+import type { HelpRequestRepository } from "../application/ports/help-request-repository.js";
+import { SubmitHelpRequest, type HelpRequestInput } from "../application/submit-help-request.js";
 import { UpdateUserName } from "../application/update-user-name.js";
 import { presentSave, presentUser } from "../infrastructure/presenters.js";
 
-/** Public door into users, their saves, and trip-update signups, host applications. */
+/** Public door into users, their saves, and trip-update signups, host applications, help requests. */
 export class UserService {
   private readonly findOrCreateUser: FindOrCreateUser;
   private readonly getUser: GetUser;
@@ -27,12 +29,14 @@ export class UserService {
   private readonly subscribeTrip: SubscribeTripUpdates;
   private readonly updateUserName: UpdateUserName;
   private readonly submitHost: SubmitHostApplication;
+  private readonly submitHelp: SubmitHelpRequest;
 
   constructor(
     users: UserRepository,
     saves: SaveRepository,
     tripUpdates: TripUpdateRepository,
     hostApplications: HostApplicationRepository,
+    helpRequests: HelpRequestRepository,
   ) {
     this.findOrCreateUser = new FindOrCreateUser(users);
     this.getUser = new GetUser(users);
@@ -43,6 +47,7 @@ export class UserService {
     this.subscribeTrip = new SubscribeTripUpdates(tripUpdates);
     this.updateUserName = new UpdateUserName(users);
     this.submitHost = new SubmitHostApplication(hostApplications);
+    this.submitHelp = new SubmitHelpRequest(helpRequests);
   }
 
   async setName(userId: string, name: string) {
@@ -83,6 +88,11 @@ export class UserService {
   /** "List with us": no account needed. */
   submitHostApplication(input: HostApplicationInput) {
     return this.submitHost.execute(input);
+  }
+
+  /** Help page form: no account needed. */
+  submitHelpRequest(input: HelpRequestInput) {
+    return this.submitHelp.execute(input);
   }
 
   async unsaveExperience(userId: string, experienceSlug: string) {

@@ -25,6 +25,9 @@ import type { UserRepository } from "./user/application/ports/user-repository.js
 import { MemorySaveRepository } from "./user/infrastructure/memory/save-repository.js";
 import { MemoryUserRepository } from "./user/infrastructure/memory/user-repository.js";
 import { SupabaseSaveRepository } from "./user/infrastructure/supabase/save-repository.js";
+import type { HelpRequestRepository } from "./user/application/ports/help-request-repository.js";
+import { MemoryHelpRequestRepository } from "./user/infrastructure/memory/help-request-repository.js";
+import { SupabaseHelpRequestRepository } from "./user/infrastructure/supabase/help-request-repository.js";
 import type { HostApplicationRepository } from "./user/application/ports/host-application-repository.js";
 import { MemoryHostApplicationRepository } from "./user/infrastructure/memory/host-application-repository.js";
 import { SupabaseHostApplicationRepository } from "./user/infrastructure/supabase/host-application-repository.js";
@@ -53,6 +56,7 @@ async function main() {
     createSaveRepository(authSource, db),
     createTripUpdateRepository(authSource, db),
     createHostApplicationRepository(authSource, db),
+    createHelpRequestRepository(authSource, db),
   );
   const communication = new CommunicationService(createSmsSender(config));
   const { otps, sessions } = createAuthStores(authSource, db);
@@ -100,6 +104,16 @@ function createTripUpdateRepository(
     return new MemoryTripUpdateRepository();
   }
   return new SupabaseTripUpdateRepository(db);
+}
+
+function createHelpRequestRepository(
+  source: "memory" | "supabase",
+  db: ReturnType<typeof createSupabaseAdmin> | null,
+): HelpRequestRepository {
+  if (source === "memory" || !db) {
+    return new MemoryHelpRequestRepository();
+  }
+  return new SupabaseHelpRequestRepository(db);
 }
 
 function createHostApplicationRepository(
