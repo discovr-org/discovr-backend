@@ -7,7 +7,7 @@ export async function buildApp(deps: HttpDeps, corsOrigins: string[]) {
   const app = Fastify({ logger: true });
   await app.register(cors, {
     origin: corsOrigins,
-    methods: ["GET", "HEAD", "OPTIONS", "PATCH", "DELETE", "POST"],
+    methods: ["GET", "HEAD", "OPTIONS", "PATCH", "PUT", "DELETE", "POST"],
   });
   await app.register(multipart, {
     limits: {
