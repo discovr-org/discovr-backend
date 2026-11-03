@@ -79,9 +79,10 @@ export type ReviewsSummary = {
 
 export type ExperienceStatus = "draft" | "published" | "archived";
 
+/** The guest app picks the icon per link; `label` is legacy. */
 export type ContentLink = {
-  label: string;
   url: string;
+  label?: string;
 };
 
 /** Hybrid bag from research sheets — extra fields that are not first-class columns. */
@@ -119,6 +120,8 @@ export type ExperienceContent = {
   difficulty?: string;
   tagsOnDisplay?: string[];
   faqs?: Array<{ q: string; a: string }>;
+  /** "link" = booking opens `links.book`; otherwise guests call the host. */
+  bookVia?: "call" | "link";
   links?: {
     maps?: ContentLink;
     book?: ContentLink;
