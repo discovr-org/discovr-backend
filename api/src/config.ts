@@ -12,6 +12,10 @@ const schema = z.object({
   cloudflareToken: z.string().min(1).optional(),
   cloudflareEmail: z.string().email().optional(),
   cloudflareAccountId: z.string().min(1).optional(),
+  r2AccessKeyId: z.string().min(1).optional(),
+  r2SecretAccessKey: z.string().min(1).optional(),
+  r2Bucket: z.string().min(1).optional(),
+  r2PublicUrl: z.string().url().optional(),
   twilioAccountSid: z.string().min(1).optional(),
   twilioAuthToken: z.string().min(1).optional(),
   twilioFromNumber: z.string().min(1).optional(),
@@ -29,6 +33,13 @@ function parseCorsOrigins(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+/** "img.discovr.in" → "https://img.discovr.in"; the dashboard copies domains without a scheme. */
+function withScheme(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  return /^https?:\/\//.test(value) ? value : `https://${value}`;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const parsed = schema.safeParse({
     port: env.API_PORT ?? env.GATEWAY_PORT ?? 8080,
@@ -42,6 +53,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     cloudflareToken: env.CLOUDFLARE_TOKEN || undefined,
     cloudflareEmail: env.CLOUDFLARE_EMAIL || undefined,
     cloudflareAccountId: env.CLOUDFLARE_ACCOUNT_ID || undefined,
+    r2AccessKeyId: env.R2_ACCESS_KEY_ID || undefined,
+    r2SecretAccessKey: env.R2_SECRET_ACCESS_KEY || undefined,
+    r2Bucket: env.R2_BUCKET || undefined,
+    r2PublicUrl: withScheme(env.R2_PUBLIC_URL),
     twilioAccountSid: env.TWILIO_ACCOUNT_SID || undefined,
     twilioAuthToken: env.TWILIO_AUTH_TOKEN || undefined,
     twilioFromNumber: env.TWILIO_FROM_NUMBER || undefined,
@@ -63,6 +78,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   ) {
     console.warn(
       "CLOUDFLARE_TOKEN is a Global API Key (cfk_). Set CLOUDFLARE_EMAIL for uploads, or use an Images API token instead.",
+    );
+  }
+  const r2Bits = [
+    config.cloudflareAccountId,
+    config.r2AccessKeyId,
+    config.r2SecretAccessKey,
+    config.r2Bucket,
+    config.r2PublicUrl,
+  ];
+  const r2Set = r2Bits.slice(1).filter(Boolean).length;
+  if (r2Set > 0 && r2Bits.filter(Boolean).length < r2Bits.length) {
+    console.warn(
+      "R2 uploads need CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, and R2_PUBLIC_URL together.",
     );
   }
   const twilioBits = [

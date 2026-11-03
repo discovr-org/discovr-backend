@@ -146,7 +146,7 @@ export class CatalogService {
   ) {
     if (!this.uploadExperienceCover) {
       throw new ValidationError(
-        "Image uploads aren't configured. Set CLOUDFLARE_TOKEN.",
+        "Image uploads aren't configured. Set the R2_* variables (or CLOUDFLARE_TOKEN).",
       );
     }
     const row = await this.uploadExperienceCover.execute({
@@ -168,7 +168,7 @@ export class CatalogService {
   ) {
     if (!this.uploadHostAvatar) {
       throw new ValidationError(
-        "Image uploads aren't configured. Set CLOUDFLARE_TOKEN.",
+        "Image uploads aren't configured. Set the R2_* variables (or CLOUDFLARE_TOKEN).",
       );
     }
     const row = await this.uploadHostAvatar.execute({

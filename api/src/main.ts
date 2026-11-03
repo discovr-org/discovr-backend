@@ -12,6 +12,7 @@ import type { ExperienceRepository } from "./catalog/application/ports/experienc
 import type { ImageUploader } from "./catalog/application/ports/image-uploader.js";
 import { CatalogService } from "./catalog/api/catalog-service.js";
 import { CloudflareImagesUploader } from "./catalog/infrastructure/cloudflare/images-uploader.js";
+import { R2ImageUploader } from "./catalog/infrastructure/cloudflare/r2-uploader.js";
 import { MemoryExperienceRepository } from "./catalog/infrastructure/memory/experience-repository.js";
 import { createSupabaseAdmin } from "./catalog/infrastructure/supabase/client.js";
 import { SupabaseExperienceRepository } from "./catalog/infrastructure/supabase/experience-repository.js";
@@ -114,6 +115,16 @@ function createAuthStores(
 }
 
 function createImageUploader(config: ApiConfig): ImageUploader | null {
+  const { cloudflareAccountId, r2AccessKeyId, r2SecretAccessKey, r2Bucket, r2PublicUrl } = config;
+  if (cloudflareAccountId && r2AccessKeyId && r2SecretAccessKey && r2Bucket && r2PublicUrl) {
+    return new R2ImageUploader({
+      accountId: cloudflareAccountId,
+      accessKeyId: r2AccessKeyId,
+      secretAccessKey: r2SecretAccessKey,
+      bucket: r2Bucket,
+      publicBaseUrl: r2PublicUrl,
+    });
+  }
   if (!config.cloudflareToken) return null;
   return new CloudflareImagesUploader({
     token: config.cloudflareToken,
