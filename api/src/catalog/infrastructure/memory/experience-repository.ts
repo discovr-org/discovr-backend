@@ -93,6 +93,7 @@ export class MemoryExperienceRepository implements ExperienceRepository {
           priceAsk: e.price.askForPrice || undefined,
           blurb: e.verdict || undefined,
           durationMinutes: e.durationMinutes || undefined,
+          format: e.content?.format,
         };
       });
   }

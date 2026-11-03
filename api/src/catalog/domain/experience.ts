@@ -282,5 +282,7 @@ export type ListingCard = {
   priceAsk?: boolean;
   durationMinutes?: number;
   blurb?: string;
+  /** trip = runs on a schedule; venue = bar or restaurant you walk into. */
+  format?: "trip" | "venue";
 };
 

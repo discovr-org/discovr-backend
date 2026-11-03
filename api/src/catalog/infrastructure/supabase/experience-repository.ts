@@ -65,6 +65,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         duration_minutes,
         about,
         verdict,
+        format:content->>format,
         host:hosts(active)
       `,
       )
@@ -585,5 +586,6 @@ function mapListingCard(row: DbRow): ListingCard {
     priceAsk: Boolean(row.price_ask) || undefined,
     blurb: String(row.verdict || row.about || "") || undefined,
     durationMinutes: minutes > 0 ? minutes : undefined,
+    format: row.format === "venue" || row.format === "trip" ? row.format : undefined,
   };
 }
