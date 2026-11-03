@@ -5,6 +5,7 @@ export function presentUser(user: User) {
   return {
     id: user.id,
     phone: user.phoneE164,
+    name: user.name,
     createdAt: user.createdAt,
   };
 }

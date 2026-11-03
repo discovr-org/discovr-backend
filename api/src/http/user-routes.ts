@@ -23,6 +23,18 @@ export function registerUserRoutes(
     },
   );
 
+  app.patch<{ Body: { name?: unknown } }>("/v1/me", async (req, reply) => {
+    try {
+      const userId = await requireUserId(deps.auth, req.headers.authorization);
+      const name = req.body?.name;
+      if (typeof name !== "string") throw new ValidationError("Add your name.");
+      const user = await deps.users.setName(userId, name);
+      return reply.send({ user });
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.get("/v1/me/saves", async (req, reply) => {
     try {
       const userId = await requireUserId(deps.auth, req.headers.authorization);

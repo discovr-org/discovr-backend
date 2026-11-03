@@ -23,7 +23,7 @@ export class VerifyOtp {
   async execute(input: {
     phone: string;
     code: string;
-  }): Promise<{ sessionId: string; user: PresentedUser }> {
+  }): Promise<{ sessionId: string; user: PresentedUser; isNewUser: boolean }> {
     const phone = normalizePhoneE164(input.phone);
     const code = input.code.trim();
     if (!/^\d{6}$/.test(code)) {
@@ -53,6 +53,7 @@ export class VerifyOtp {
       expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
     });
 
-    return { sessionId, user };
+    // No name yet means sign-up never finished, so the sheet asks for it again.
+    return { sessionId, user, isNewUser: !user.name };
   }
 }

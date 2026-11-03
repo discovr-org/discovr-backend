@@ -8,6 +8,7 @@ import { RemoveSave } from "../application/remove-save.js";
 import { ReplaceSaves } from "../application/replace-saves.js";
 import type { TripUpdateRepository } from "../application/ports/trip-update-repository.js";
 import { SubscribeTripUpdates } from "../application/subscribe-trip-updates.js";
+import { UpdateUserName } from "../application/update-user-name.js";
 import { presentSave, presentUser } from "../infrastructure/presenters.js";
 
 /** Public door into users, their saves, and trip-update signups. */
@@ -19,6 +20,7 @@ export class UserService {
   private readonly addSave: AddSave;
   private readonly removeSave: RemoveSave;
   private readonly subscribeTrip: SubscribeTripUpdates;
+  private readonly updateUserName: UpdateUserName;
 
   constructor(
     users: UserRepository,
@@ -32,6 +34,12 @@ export class UserService {
     this.addSave = new AddSave(saves);
     this.removeSave = new RemoveSave(saves);
     this.subscribeTrip = new SubscribeTripUpdates(tripUpdates);
+    this.updateUserName = new UpdateUserName(users);
+  }
+
+  async setName(userId: string, name: string) {
+    const user = await this.updateUserName.execute(userId, name);
+    return presentUser(user);
   }
 
   async findOrCreateByPhone(phoneE164: string) {

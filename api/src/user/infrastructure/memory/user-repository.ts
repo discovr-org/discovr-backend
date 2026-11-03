@@ -21,10 +21,19 @@ export class MemoryUserRepository implements UserRepository {
     const user: User = {
       id: randomUUID(),
       phoneE164,
+      name: null,
       createdAt: new Date().toISOString(),
     };
     this.byId.set(user.id, user);
     this.byPhone.set(phoneE164, user.id);
     return user;
+  }
+
+  async updateName(id: string, name: string): Promise<User | null> {
+    const user = this.byId.get(id);
+    if (!user) return null;
+    const next = { ...user, name };
+    this.byId.set(id, next);
+    return next;
   }
 }
