@@ -23,6 +23,15 @@ export function registerUserRoutes(
     },
   );
 
+  app.post<{ Body: Record<string, unknown> }>("/v1/host-applications", async (req, reply) => {
+    try {
+      const body = await deps.users.submitHostApplication(req.body ?? {});
+      return reply.code(201).send(body);
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.patch<{ Body: { name?: unknown } }>("/v1/me", async (req, reply) => {
     try {
       const userId = await requireUserId(deps.auth, req.headers.authorization);

@@ -8,10 +8,15 @@ import { RemoveSave } from "../application/remove-save.js";
 import { ReplaceSaves } from "../application/replace-saves.js";
 import type { TripUpdateRepository } from "../application/ports/trip-update-repository.js";
 import { SubscribeTripUpdates } from "../application/subscribe-trip-updates.js";
+import type { HostApplicationRepository } from "../application/ports/host-application-repository.js";
+import {
+  SubmitHostApplication,
+  type HostApplicationInput,
+} from "../application/submit-host-application.js";
 import { UpdateUserName } from "../application/update-user-name.js";
 import { presentSave, presentUser } from "../infrastructure/presenters.js";
 
-/** Public door into users, their saves, and trip-update signups. */
+/** Public door into users, their saves, and trip-update signups, host applications. */
 export class UserService {
   private readonly findOrCreateUser: FindOrCreateUser;
   private readonly getUser: GetUser;
@@ -21,11 +26,13 @@ export class UserService {
   private readonly removeSave: RemoveSave;
   private readonly subscribeTrip: SubscribeTripUpdates;
   private readonly updateUserName: UpdateUserName;
+  private readonly submitHost: SubmitHostApplication;
 
   constructor(
     users: UserRepository,
     saves: SaveRepository,
     tripUpdates: TripUpdateRepository,
+    hostApplications: HostApplicationRepository,
   ) {
     this.findOrCreateUser = new FindOrCreateUser(users);
     this.getUser = new GetUser(users);
@@ -35,6 +42,7 @@ export class UserService {
     this.removeSave = new RemoveSave(saves);
     this.subscribeTrip = new SubscribeTripUpdates(tripUpdates);
     this.updateUserName = new UpdateUserName(users);
+    this.submitHost = new SubmitHostApplication(hostApplications);
   }
 
   async setName(userId: string, name: string) {
@@ -70,6 +78,11 @@ export class UserService {
   /** Footer "Keep me posted": no account needed. */
   subscribeTripUpdates(phone: string, source?: string) {
     return this.subscribeTrip.execute(phone, source);
+  }
+
+  /** "List with us": no account needed. */
+  submitHostApplication(input: HostApplicationInput) {
+    return this.submitHost.execute(input);
   }
 
   async unsaveExperience(userId: string, experienceSlug: string) {
