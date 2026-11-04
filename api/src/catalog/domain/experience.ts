@@ -184,6 +184,11 @@ export type HostSummary = {
 export type ListingSchedule = {
   days?: string;
   timeSlot?: string;
+  /** Days with their own hours (e.g. weekends), shown with `altTimeSlot`. "Mon" … "Sun". */
+  altDays?: string[];
+  altTimeSlot?: string;
+  /** Days the place is shut. "Mon" … "Sun". */
+  closedDays?: string[];
   bestTime?: string;
   ageGroup?: string;
   minPeople?: string;

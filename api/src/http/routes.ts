@@ -349,6 +349,11 @@ function sanitizeSchedule(
   const out: NonNullable<ExperiencePatch["schedule"]> = {};
   if (typeof value.days === "string") out.days = value.days;
   if (typeof value.timeSlot === "string") out.timeSlot = value.timeSlot;
+  const altDays = weekdays(value.altDays);
+  if (altDays) out.altDays = altDays;
+  if (typeof value.altTimeSlot === "string") out.altTimeSlot = value.altTimeSlot;
+  const closedDays = weekdays(value.closedDays);
+  if (closedDays) out.closedDays = closedDays;
   if (typeof value.bestTime === "string") out.bestTime = value.bestTime;
   if (typeof value.ageGroup === "string") out.ageGroup = value.ageGroup;
   if (typeof value.minPeople === "string") out.minPeople = value.minPeople;
@@ -356,6 +361,14 @@ function sanitizeSchedule(
     out.durationLabel = value.durationLabel;
   }
   return out;
+}
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function weekdays(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const days = WEEKDAYS.filter((d) => value.includes(d));
+  return days.length ? days : undefined;
 }
 
 function sanitizePolicy(
