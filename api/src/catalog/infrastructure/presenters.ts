@@ -52,6 +52,7 @@ export function presentExperienceSummaries(rows: ExperienceSummary[]) {
       hostBusinessName: r.hostBusinessName,
       hostActive: r.hostActive,
       placeNeighborhood: r.placeNeighborhood,
+      hasPhoto: r.hasPhoto,
     })),
   };
 }

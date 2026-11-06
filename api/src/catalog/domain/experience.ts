@@ -166,6 +166,7 @@ export type ExperienceSummary = {
   hostBusinessName: string;
   hostActive: boolean;
   placeNeighborhood: string;
+  hasPhoto: boolean;
 };
 
 export type HostSummary = {

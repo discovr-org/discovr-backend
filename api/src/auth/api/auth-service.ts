@@ -1,5 +1,6 @@
 import type { CommunicationService } from "../../communication/api/communication-service.js";
 import type { UserService } from "../../user/api/user-service.js";
+import { SessionCache } from "../application/session-cache.js";
 import { Logout } from "../application/logout.js";
 import type { OtpRepository } from "../application/ports/otp-repository.js";
 import type { SessionRepository } from "../application/ports/session-repository.js";
@@ -22,8 +23,9 @@ export class AuthService {
   ) {
     this.requestOtp = new RequestOtp(otps, communication);
     this.verifyOtp = new VerifyOtp(otps, sessions, users);
-    this.resolveSession = new ResolveSession(sessions, users);
-    this.logout = new Logout(sessions);
+    const cache = new SessionCache();
+    this.resolveSession = new ResolveSession(sessions, users, cache);
+    this.logout = new Logout(sessions, cache);
   }
 
   requestLoginOtp(phone: string) {
@@ -32,6 +34,10 @@ export class AuthService {
 
   verifyLoginOtp(phone: string, code: string) {
     return this.verifyOtp.execute({ phone, code });
+  }
+
+  userIdFor(sessionId: string) {
+    return this.resolveSession.userId(sessionId);
   }
 
   me(sessionId: string) {

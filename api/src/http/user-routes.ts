@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { AuthService } from "../auth/api/auth-service.js";
 import type { UserService } from "../user/api/user-service.js";
 import { UnauthorizedError, ValidationError } from "../shared/errors.js";
+import { limit } from "./rate-limits.js";
 import { readBearerToken, sendApiError } from "./send-error.js";
 
 export function registerUserRoutes(
@@ -10,6 +11,7 @@ export function registerUserRoutes(
 ) {
   app.post<{ Body: { phone?: string; source?: string } }>(
     "/v1/trip-updates",
+    limit(5),
     async (req, reply) => {
       try {
         const body = await deps.users.subscribeTripUpdates(
@@ -23,7 +25,7 @@ export function registerUserRoutes(
     },
   );
 
-  app.post<{ Body: Record<string, unknown> }>("/v1/host-applications", async (req, reply) => {
+  app.post<{ Body: Record<string, unknown> }>("/v1/host-applications", limit(3), async (req, reply) => {
     try {
       const body = await deps.users.submitHostApplication(req.body ?? {});
       return reply.code(201).send(body);
@@ -32,7 +34,7 @@ export function registerUserRoutes(
     }
   });
 
-  app.post<{ Body: Record<string, unknown> }>("/v1/help-requests", async (req, reply) => {
+  app.post<{ Body: Record<string, unknown> }>("/v1/help-requests", limit(5), async (req, reply) => {
     try {
       const body = await deps.users.submitHelpRequest(req.body ?? {});
       return reply.code(201).send(body);
@@ -110,6 +112,5 @@ async function requireUserId(
 ): Promise<string> {
   const sessionId = readBearerToken(authorization);
   if (!sessionId) throw new UnauthorizedError();
-  const user = await auth.me(sessionId);
-  return user.id;
+  return auth.userIdFor(sessionId);
 }

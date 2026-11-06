@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AuthService } from "../auth/api/auth-service.js";
 import { UnauthorizedError, ValidationError } from "../shared/errors.js";
+import { limit } from "./rate-limits.js";
 import { readBearerToken, sendApiError } from "./send-error.js";
 
 export function registerAuthRoutes(
@@ -9,6 +10,7 @@ export function registerAuthRoutes(
 ) {
   app.post<{ Body: { phone?: string } }>(
     "/v1/auth/otp/request",
+    limit(5),
     async (req, reply) => {
       try {
         const phone = req.body?.phone;
@@ -25,6 +27,7 @@ export function registerAuthRoutes(
 
   app.post<{ Body: { phone?: string; code?: string } }>(
     "/v1/auth/otp/verify",
+    limit(15),
     async (req, reply) => {
       try {
         const phone = req.body?.phone;

@@ -89,6 +89,8 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         verdict,
         price_from_inr,
         place_neighborhood,
+        cover_photo_url,
+        photos:experience_photos(id),
         host_id,
         host:hosts(business_name, active)
       `,
@@ -112,6 +114,9 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         hostBusinessName: String(host?.business_name ?? ""),
         hostActive: host?.active !== false,
         placeNeighborhood: String(row.place_neighborhood ?? ""),
+        hasPhoto:
+          Boolean(row.cover_photo_url) ||
+          (Array.isArray(row.photos) && row.photos.length > 0),
       };
     });
   }

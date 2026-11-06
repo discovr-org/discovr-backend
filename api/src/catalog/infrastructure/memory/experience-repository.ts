@@ -129,6 +129,7 @@ export class MemoryExperienceRepository
         hostBusinessName: host?.businessName ?? e.host.businessName,
         hostActive: host?.active ?? true,
         placeNeighborhood: e.place.neighborhood,
+        hasPhoto: e.photos.length > 0 || this.covers.has(e.id),
       };
     });
   }

@@ -66,7 +66,7 @@ export class CatalogService {
   ) {
     this.getExperience = new GetExperience(repo);
     this.getAdminExperience = new GetAdminExperience(repo);
-    this.listCards = new ListCards(repo);
+    this.listCards = new ListCards(repo, 60 * 1000);
     this.listExperiences = new ListExperiences(repo);
     this.listHosts = new ListHosts(repo);
     this.createExperience = new CreateExperience(repo);
@@ -92,6 +92,13 @@ export class CatalogService {
   async getCards() {
     const cards = await this.listCards.execute();
     return presentCards(cards);
+  }
+
+  /** Any write: cards, admin listing table and host table all reload. */
+  private invalidateLists() {
+    this.listCards.invalidate();
+    this.listExperiences.invalidate();
+    this.listHosts.invalidate();
   }
 
   /** Clear the cached cards and cache a fresh copy. */
@@ -122,37 +129,37 @@ export class CatalogService {
 
   async addExperience(input: ExperienceCreate) {
     const row = await this.createExperience.execute(input);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentExperienceAdmin(row);
   }
 
   async patchExperience(id: string, patch: ExperiencePatch) {
     const row = await this.updateExperience.execute(id, patch);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentExperienceAdmin(row);
   }
 
   async removeExperience(id: string) {
     await this.deleteExperience.execute(id);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return { ok: true as const };
   }
 
   async addHost(input: HostCreate) {
     const row = await this.createHost.execute(input);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentHostSummary(row);
   }
 
   async patchHost(id: string, patch: HostPatch) {
     const row = await this.updateHost.execute(id, patch);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentHostSummary(row);
   }
 
   async removeHost(id: string) {
     await this.deleteHost.execute(id);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return { ok: true as const };
   }
 
@@ -171,7 +178,7 @@ export class CatalogService {
       file,
       ...options,
     });
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentExperienceAdmin(row);
   }
 
@@ -181,13 +188,13 @@ export class CatalogService {
     coverId: string | null,
   ) {
     const row = await this.updateExperiencePhotos.execute(experienceId, items, coverId);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentExperienceAdmin(row);
   }
 
   async removePhoto(experienceId: string, photoId: string) {
     const row = await this.deleteExperiencePhoto.execute(experienceId, photoId);
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentExperienceAdmin(row);
   }
 
@@ -227,7 +234,7 @@ export class CatalogService {
       hostId,
       ...file,
     });
-    this.listCards.invalidate();
+    this.invalidateLists();
     return presentHostSummary(row);
   }
 }
