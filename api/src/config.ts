@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const schema = z.object({
   port: z.coerce.number().int().positive().default(8080),
+  adminUrl: z.string().url().default("https://discovr-admin.vercel.app"),
   corsOrigins: z.array(z.string().url()).min(1),
   catalogDataSource: z.enum(["memory", "supabase"]).default("memory"),
   authDataSource: z.enum(["memory", "supabase"]).optional(),
@@ -43,6 +44,7 @@ function withScheme(raw: string | undefined): string | undefined {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const parsed = schema.safeParse({
     port: env.API_PORT ?? env.GATEWAY_PORT ?? 8080,
+    adminUrl: withScheme(env.ADMIN_URL)?.replace(/\/$/, ""),
     corsOrigins: parseCorsOrigins(env.CORS_ORIGIN),
     catalogDataSource: env.CATALOG_DATA_SOURCE ?? "memory",
     authDataSource: env.AUTH_DATA_SOURCE || undefined,

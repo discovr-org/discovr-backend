@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { AssistantService } from "./assistant/api/assistant-service.js";
 import { AuthService } from "./auth/api/auth-service.js";
 import type { OtpRepository } from "./auth/application/ports/otp-repository.js";
 import type { SessionRepository } from "./auth/application/ports/session-repository.js";
@@ -65,7 +66,9 @@ async function main() {
   const { otps, sessions } = createAuthStores(authSource, db);
   const auth = new AuthService(otps, sessions, users, communication);
 
-  const app = await buildApp({ catalog, auth, users }, config.corsOrigins);
+  const assistant = new AssistantService(catalog, config.adminUrl);
+
+  const app = await buildApp({ catalog, auth, users, assistant }, config.corsOrigins);
   await app.listen({ port: config.port, host: "0.0.0.0" });
 }
 

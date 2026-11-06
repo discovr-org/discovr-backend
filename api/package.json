@@ -25,6 +25,7 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^11.2.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@supabase/server": "^1.9.2",
     "@supabase/supabase-js": "^2.81.0",
     "aws4fetch": "^1.0.20",
