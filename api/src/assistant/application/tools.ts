@@ -2,31 +2,40 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import { listingBasics, listingExtras } from "../domain/listing-input.js";
-
-const text = (value: unknown) => ({
-  content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
-});
-
-/** Errors go back to the AI as text so it can fix the input and retry. */
-async function run(fn: () => Promise<unknown>) {
-  try {
-    return text(await fn());
-  } catch (err) {
-    return { ...text(err instanceof Error ? err.message : "Something went wrong."), isError: true };
-  }
-}
+import { registerEditTools } from "./edit-tools.js";
+import type { PlaceFinder } from "./ports/place-finder.js";
+import { run } from "./tool-result.js";
 
 /**
  * Tools the AI can call. Every write is a draft: status and active are fixed here,
  * never taken from the AI. Publishing stays a human click in the admin.
  */
-export function registerTools(server: McpServer, catalog: CatalogService, adminUrl: string) {
+export function registerTools(
+  server: McpServer,
+  catalog: CatalogService,
+  places: PlaceFinder,
+  adminUrl: string,
+) {
+  registerEditTools(server, catalog, adminUrl);
+
+  server.registerTool(
+    "find_place",
+    {
+      description:
+        "Get lat/lng for a place. Pass a place name ('Britto's Baga') or a Google Maps link. Returns up to 5 matches with address: if more than one fits, ask the user which. Never guess coordinates.",
+      inputSchema: { query: z.string() },
+      annotations: { readOnlyHint: true },
+    },
+    ({ query }) => run(() => places.find(query)),
+  );
+
   server.registerTool(
     "find_hosts",
     {
       description:
         "Search hosts by business name, contact name or phone. Call this before create_host_draft so you don't make a duplicate.",
       inputSchema: { query: z.string().describe("Part of a name or phone. Empty = list all.") },
+      annotations: { readOnlyHint: true },
     },
     ({ query }) =>
       run(async () => {
@@ -43,6 +52,7 @@ export function registerTools(server: McpServer, catalog: CatalogService, adminU
     {
       description: "Search existing listings by title or slug. Read only. Use it to avoid duplicates.",
       inputSchema: { query: z.string().describe("Part of a title or slug. Empty = list all.") },
+      annotations: { readOnlyHint: true },
     },
     ({ query }) =>
       run(async () => {
