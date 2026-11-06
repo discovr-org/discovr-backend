@@ -100,7 +100,7 @@ export function registerTools(
           slug: saved.slug,
           status: saved.status,
           review: `${adminUrl}/listings/${saved.id}`,
-          note: "Draft saved. Photos still need adding in the admin.",
+          note: "Draft saved. No photos yet: call get_photo_upload_link and give the user the link.",
         };
       }),
   );

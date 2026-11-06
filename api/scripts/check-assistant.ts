@@ -66,6 +66,11 @@ assert.match((await call("needs_attention", {})).body, /no photo/);
 assert.ok(!(await call("set_host_active", { id: hostId, active: true })).error);
 assert.ok(!(await call("update_host", { id: hostId, phone: "+919811111111" })).error);
 
+const link = await call("get_photo_upload_link", { kind: "listing", id: saved.id });
+assert.match(link.body, new RegExp(`http://admin/listings/${saved.id}#sec-photos`));
+assert.ok((await call("get_photo_upload_link", { kind: "listing", id: "nope" })).error);
+assert.match((await call("get_photo_upload_link", { kind: "host", id: hostId })).body, /\/hosts/);
+
 const prompts = await client.listPrompts();
 assert.equal(prompts.prompts[0].name, "new_listing");
 assert.match(client.getInstructions() ?? "", /ask|DRAFT/);

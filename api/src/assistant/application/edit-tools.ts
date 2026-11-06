@@ -24,6 +24,32 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
   );
 
   server.registerTool(
+    "get_photo_upload_link",
+    {
+      description:
+        "Link where a human uploads photos (cover, carousel, menu pages, story photos) for a listing, or the host avatar. You can't receive photos in chat, so give the user this link after creating a draft.",
+      inputSchema: {
+        kind: z.enum(["listing", "host"]),
+        id: z.string().describe("Listing id, or host id."),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    ({ kind, id }) =>
+      run(async () => {
+        if (kind === "listing") {
+          const row = await catalog.getAdminExperienceById(id); // throws if the id is wrong
+          return {
+            link: `${adminUrl}/listings/${row.id}#sec-photos`,
+            note: "Opens the listing's Photos section. Upload the cover and carousel there. Menu pages and story photos are further down the page.",
+          };
+        }
+        const { hosts } = await catalog.getHosts();
+        if (!hosts.some((h) => h.id === id)) throw new Error(`Host ${id} not found`);
+        return { link: `${adminUrl}/hosts`, note: "Find the host in the list and upload the avatar on its row." };
+      }),
+  );
+
+  server.registerTool(
     "needs_attention",
     {
       description:
