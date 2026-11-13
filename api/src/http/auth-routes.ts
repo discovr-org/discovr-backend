@@ -43,6 +43,25 @@ export function registerAuthRoutes(
     },
   );
 
+  // Signed in here, installing there: a one-use code the installed app swaps for its own session.
+  app.post("/v1/auth/handoff", limit(20), async (req, reply) => {
+    try {
+      const sessionId = readBearerToken(req.headers.authorization);
+      if (!sessionId) throw new UnauthorizedError();
+      return reply.send(await auth.handoffCodeFor(sessionId));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
+  app.post<{ Body: { code?: unknown } }>("/v1/auth/handoff/exchange", limit(10), async (req, reply) => {
+    try {
+      return reply.send(await auth.exchangeHandoffCode(req.body?.code));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.get("/v1/auth/me", async (req, reply) => {
     try {
       const sessionId = readBearerToken(req.headers.authorization);

@@ -5,9 +5,12 @@ import { AssistantService } from "./assistant/api/assistant-service.js";
 import { WebPlaceFinder } from "./assistant/infrastructure/web-place-finder.js";
 import { AuthService } from "./auth/api/auth-service.js";
 import type { OtpRepository } from "./auth/application/ports/otp-repository.js";
+import type { HandoffRepository } from "./auth/application/ports/handoff-repository.js";
 import type { SessionRepository } from "./auth/application/ports/session-repository.js";
+import { MemoryHandoffRepository } from "./auth/infrastructure/memory/handoff-repository.js";
 import { MemoryOtpRepository } from "./auth/infrastructure/memory/otp-repository.js";
 import { MemorySessionRepository } from "./auth/infrastructure/memory/session-repository.js";
+import { SupabaseHandoffRepository } from "./auth/infrastructure/supabase/handoff-repository.js";
 import { SupabaseOtpRepository } from "./auth/infrastructure/supabase/otp-repository.js";
 import { SupabaseSessionRepository } from "./auth/infrastructure/supabase/session-repository.js";
 import type { ExperienceMediaRepository } from "./catalog/application/ports/experience-media-repository.js";
@@ -64,8 +67,8 @@ async function main() {
     createHelpRequestRepository(authSource, db),
   );
   const communication = new CommunicationService(createSmsSender(config));
-  const { otps, sessions } = createAuthStores(authSource, db);
-  const auth = new AuthService(otps, sessions, users, communication);
+  const { otps, sessions, handoffs } = createAuthStores(authSource, db);
+  const auth = new AuthService(otps, sessions, handoffs, users, communication);
 
   const assistant = new AssistantService(catalog, new WebPlaceFinder(), config.adminUrl);
 
@@ -140,16 +143,18 @@ function createHostApplicationRepository(
 function createAuthStores(
   source: "memory" | "supabase",
   db: ReturnType<typeof createSupabaseAdmin> | null,
-): { otps: OtpRepository; sessions: SessionRepository } {
+): { otps: OtpRepository; sessions: SessionRepository; handoffs: HandoffRepository } {
   if (source === "memory" || !db) {
     return {
       otps: new MemoryOtpRepository(),
       sessions: new MemorySessionRepository(),
+      handoffs: new MemoryHandoffRepository(),
     };
   }
   return {
     otps: new SupabaseOtpRepository(db),
     sessions: new SupabaseSessionRepository(db),
+    handoffs: new SupabaseHandoffRepository(db),
   };
 }
 
