@@ -36,6 +36,11 @@ export class MemorySessionRepository implements SessionRepository {
     );
   }
 
+  async revokeByTokenHash(tokenHash: string, at: Date): Promise<void> {
+    const row = this.rows.find((r) => r.tokenHash === tokenHash && !r.revokedAt);
+    if (row) row.revokedAt = at.toISOString();
+  }
+
   async revoke(id: string, at: Date): Promise<void> {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.revokedAt = at.toISOString();

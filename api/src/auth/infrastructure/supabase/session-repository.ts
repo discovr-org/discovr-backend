@@ -41,6 +41,15 @@ export class SupabaseSessionRepository implements SessionRepository {
     return data ? mapSession(data) : null;
   }
 
+  async revokeByTokenHash(tokenHash: string, at: Date): Promise<void> {
+    const { error } = await this.db
+      .from("auth_sessions")
+      .update({ revoked_at: at.toISOString() })
+      .eq("token_hash", tokenHash)
+      .is("revoked_at", null);
+    if (error) throw error;
+  }
+
   async revoke(id: string, at: Date): Promise<void> {
     const { error } = await this.db
       .from("auth_sessions")

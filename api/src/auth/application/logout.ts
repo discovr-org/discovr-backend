@@ -14,10 +14,7 @@ export class Logout {
     const tokenHash = hashSecret(token);
     // ponytail: other instances keep a cached session up to 60 s after sign-out.
     this.cache.delete(tokenHash);
-    const session = await this.sessions.findByTokenHash(tokenHash, new Date());
-    if (session) {
-      await this.sessions.revoke(session.id, new Date());
-    }
+    await this.sessions.revokeByTokenHash(tokenHash, new Date());
     return { ok: true };
   }
 }
