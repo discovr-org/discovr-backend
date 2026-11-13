@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { User } from "../../domain/user.js";
+import type { Trip, User } from "../../domain/user.js";
 import type { UserRepository } from "../../application/ports/user-repository.js";
 
 export class MemoryUserRepository implements UserRepository {
@@ -23,6 +23,7 @@ export class MemoryUserRepository implements UserRepository {
       phoneE164,
       name: null,
       createdAt: new Date().toISOString(),
+      trip: null,
     };
     this.byId.set(user.id, user);
     this.byPhone.set(phoneE164, user.id);
@@ -33,6 +34,14 @@ export class MemoryUserRepository implements UserRepository {
     const user = this.byId.get(id);
     if (!user) return null;
     const next = { ...user, name };
+    this.byId.set(id, next);
+    return next;
+  }
+
+  async updateTrip(id: string, trip: Trip): Promise<User | null> {
+    const user = this.byId.get(id);
+    if (!user) return null;
+    const next = { ...user, trip };
     this.byId.set(id, next);
     return next;
   }

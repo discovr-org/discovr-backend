@@ -55,6 +55,16 @@ export function registerUserRoutes(
     }
   });
 
+  app.put<{ Body: { status?: unknown; lastDay?: unknown } }>("/v1/me/trip", limit(30), async (req, reply) => {
+    try {
+      const userId = await requireUserId(deps.auth, req.headers.authorization);
+      const user = await deps.users.setTrip(userId, req.body ?? {});
+      return reply.send({ user });
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.get("/v1/me/saves", async (req, reply) => {
     try {
       const userId = await requireUserId(deps.auth, req.headers.authorization);

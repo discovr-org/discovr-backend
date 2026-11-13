@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { User } from "../../domain/user.js";
+import type { Trip, TripStatus, User } from "../../domain/user.js";
 import type { UserRepository } from "../../application/ports/user-repository.js";
 
-const COLUMNS = "id, phone_e164, name, created_at";
+const COLUMNS = "id, phone_e164, name, created_at, trip_status, trip_last_day, trip_ask_again_on";
 
 export class SupabaseUserRepository implements UserRepository {
   constructor(private readonly db: SupabaseClient) {}
@@ -47,6 +47,22 @@ export class SupabaseUserRepository implements UserRepository {
     if (error) throw error;
     return data ? mapUser(data) : null;
   }
+
+  async updateTrip(id: string, trip: Trip): Promise<User | null> {
+    const { data, error } = await this.db
+      .from("users")
+      .update({
+        trip_status: trip.status,
+        trip_last_day: trip.lastDay,
+        trip_ask_again_on: trip.askAgainOn,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select(COLUMNS)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapUser(data) : null;
+  }
 }
 
 function mapUser(row: {
@@ -54,11 +70,21 @@ function mapUser(row: {
   phone_e164: string;
   name: string | null;
   created_at: string;
+  trip_status: string | null;
+  trip_last_day: string | null;
+  trip_ask_again_on: string | null;
 }): User {
   return {
     id: String(row.id),
     phoneE164: String(row.phone_e164),
     name: row.name ? String(row.name) : null,
     createdAt: String(row.created_at),
+    trip: row.trip_status
+      ? {
+          status: row.trip_status as TripStatus,
+          lastDay: row.trip_last_day ? String(row.trip_last_day) : null,
+          askAgainOn: row.trip_ask_again_on ? String(row.trip_ask_again_on) : null,
+        }
+      : null,
   };
 }

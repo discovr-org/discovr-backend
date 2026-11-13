@@ -7,6 +7,7 @@ export function presentUser(user: User) {
     phone: user.phoneE164,
     name: user.name,
     createdAt: user.createdAt,
+    trip: user.trip,
   };
 }
 

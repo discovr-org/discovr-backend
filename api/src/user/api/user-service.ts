@@ -15,6 +15,7 @@ import {
 } from "../application/submit-host-application.js";
 import type { HelpRequestRepository } from "../application/ports/help-request-repository.js";
 import { SubmitHelpRequest, type HelpRequestInput } from "../application/submit-help-request.js";
+import { SetTripEnd, type TripEndInput } from "../application/set-trip-end.js";
 import { UpdateUserName } from "../application/update-user-name.js";
 import { presentSave, presentUser } from "../infrastructure/presenters.js";
 
@@ -28,6 +29,7 @@ export class UserService {
   private readonly removeSave: RemoveSave;
   private readonly subscribeTrip: SubscribeTripUpdates;
   private readonly updateUserName: UpdateUserName;
+  private readonly setTripEnd: SetTripEnd;
   private readonly submitHost: SubmitHostApplication;
   private readonly submitHelp: SubmitHelpRequest;
 
@@ -46,12 +48,18 @@ export class UserService {
     this.removeSave = new RemoveSave(saves);
     this.subscribeTrip = new SubscribeTripUpdates(tripUpdates);
     this.updateUserName = new UpdateUserName(users);
+    this.setTripEnd = new SetTripEnd(users);
     this.submitHost = new SubmitHostApplication(hostApplications);
     this.submitHelp = new SubmitHelpRequest(helpRequests);
   }
 
   async setName(userId: string, name: string) {
     const user = await this.updateUserName.execute(userId, name);
+    return presentUser(user);
+  }
+
+  async setTrip(userId: string, input: TripEndInput) {
+    const user = await this.setTripEnd.execute(userId, input);
     return presentUser(user);
   }
 
