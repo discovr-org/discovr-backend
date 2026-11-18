@@ -3,6 +3,7 @@ import { CreateHost } from "../application/create-host.js";
 import { DeleteExperience } from "../application/delete-experience.js";
 import { DeleteHost } from "../application/delete-host.js";
 import { GetAdminExperience } from "../application/get-admin-experience.js";
+import { Categories, cleanLayout } from "../application/categories.js";
 import { PreviewExperience } from "../application/preview-experience.js";
 import { GetExperience } from "../application/get-experience.js";
 import { ListExperiences } from "../application/list-experiences.js";
@@ -30,6 +31,8 @@ import type {
 } from "../domain/experience.js";
 import { ValidationError } from "../domain/errors.js";
 import {
+  presentCategories,
+  presentCategory,
   presentExperience,
   presentExperienceAdmin,
   presentExperienceSummaries,
@@ -43,6 +46,7 @@ export class CatalogService {
   private readonly getExperience: GetExperience;
   private readonly getAdminExperience: GetAdminExperience;
   private readonly previewDraft: PreviewExperience;
+  private readonly categories: Categories;
   private readonly listCards: ListCards;
   private readonly listExperiences: ListExperiences;
   private readonly listHosts: ListHosts;
@@ -69,6 +73,7 @@ export class CatalogService {
     this.getExperience = new GetExperience(repo);
     this.getAdminExperience = new GetAdminExperience(repo);
     this.previewDraft = new PreviewExperience(repo);
+    this.categories = new Categories(repo);
     this.listCards = new ListCards(repo, 60 * 1000);
     this.listExperiences = new ListExperiences(repo);
     this.listHosts = new ListHosts(repo);
@@ -131,8 +136,30 @@ export class CatalogService {
   }
 
   /** The guest page for an unsaved draft. Nothing is written. */
-  async previewExperience(id: string, patch: ExperiencePatch) {
-    return presentExperience(await this.previewDraft.execute(id, patch));
+  async previewExperience(id: string, patch: ExperiencePatch, categoryLayout?: unknown) {
+    const layout = categoryLayout === undefined ? undefined : cleanLayout(categoryLayout);
+    return presentExperience(await this.previewDraft.execute(id, patch, layout));
+  }
+
+  async getCategories() {
+    return presentCategories(await this.categories.list());
+  }
+
+  async getCategoryById(id: string) {
+    return presentCategory(await this.categories.get(id));
+  }
+
+  async addCategory(input: { name?: unknown; slug?: unknown; layout?: unknown }) {
+    return presentCategory(await this.categories.create(input));
+  }
+
+  async patchCategory(id: string, input: { name?: unknown; slug?: unknown; layout?: unknown }) {
+    return presentCategory(await this.categories.update(id, input));
+  }
+
+  async removeCategory(id: string) {
+    await this.categories.remove(id);
+    return { ok: true as const };
   }
 
   async addExperience(input: ExperienceCreate) {

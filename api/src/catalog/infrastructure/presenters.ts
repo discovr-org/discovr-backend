@@ -1,4 +1,5 @@
 import type {
+  Category,
   Experience,
   ExperienceAdmin,
   ExperienceSummary,
@@ -32,7 +33,16 @@ export function presentExperience(e: Experience) {
     reviews: e.reviews,
     tags: e.tags,
     content: e.content ?? {},
+    ...(e.category ? { category: e.category } : {}),
   };
+}
+
+export function presentCategory(c: Category) {
+  return { id: c.id, slug: c.slug, name: c.name, layout: c.layout, listingCount: c.listingCount };
+}
+
+export function presentCategories(rows: Category[]) {
+  return { categories: rows.map(presentCategory) };
 }
 
 export function presentCards(cards: ListingCard[]) {
@@ -98,6 +108,7 @@ export function presentExperienceAdmin(row: ExperienceAdmin) {
     schedule: row.schedule,
     policy: row.policy,
     content: row.content,
+    categoryId: row.categoryId,
   };
 }
 

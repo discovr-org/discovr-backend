@@ -133,6 +133,25 @@ export type ExperienceContent = {
   };
 };
 
+/** A category's page layout. The guest app draws a listing from this plus the listing's own fields. */
+export type CategoryLayout = {
+  /** Order and visibility of the page parts. */
+  sections?: Array<{ id: string; show?: boolean }>;
+  /** The story, in order. Blocks name the listing field they fill. */
+  story?: unknown[];
+};
+
+export type Category = {
+  id: string;
+  slug: string;
+  name: string;
+  layout: CategoryLayout;
+  /** How many listings use it. Filled in by the list. */
+  listingCount?: number;
+};
+
+export type CategoryInput = { name?: string; slug?: string; layout?: CategoryLayout };
+
 export type Experience = {
   id: string;
   slug: string;
@@ -152,6 +171,8 @@ export type Experience = {
   reviews?: ReviewsSummary;
   tags: string[];
   content?: ExperienceContent;
+  /** Set when the listing uses a category: that category's name and layout. */
+  category?: { slug: string; name: string; layout: CategoryLayout };
 };
 
 /** Thin row for admin / index tables. */
@@ -224,6 +245,8 @@ export type ExperienceAdmin = {
   schedule: ListingSchedule;
   policy: Policy | null;
   content: ExperienceContent;
+  /** The category whose layout this listing uses, or none (its own layout). */
+  categoryId: string | null;
 };
 
 export type AdminPhoto = {
@@ -258,6 +281,7 @@ export type ExperiencePatch = {
   schedule?: ListingSchedule;
   policy?: Policy | null;
   content?: ExperienceContent;
+  categoryId?: string | null;
   coverPhotoUrl?: string | null;
   coverPhotoAlt?: string | null;
 };
@@ -297,6 +321,7 @@ export type ExperienceCreate = {
   durationMinutes?: number;
   groupSizeMax?: number;
   groupSizeLabel?: string;
+  categoryId?: string | null;
 };
 
 

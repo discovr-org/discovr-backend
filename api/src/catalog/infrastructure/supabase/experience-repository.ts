@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExperienceRepository } from "../../application/ports/experience-repository.js";
+import { ValidationError } from "../../../shared/errors.js";
 import type {
+  Category,
+  CategoryInput,
+  CategoryLayout,
   Experience,
   ExperienceAdmin,
   ExperienceContent,
@@ -47,11 +51,13 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     if (!row) return null;
     const host = row.host as { active?: boolean } | null;
     if (host && host.active === false) return null;
-    return mapExperience(row);
+    const experience = mapExperience(row);
+    const category = row.category_id ? await this.categoryById(String(row.category_id)) : null;
+    return category ? { ...experience, category: { slug: category.slug, name: category.name, layout: category.layout } } : experience;
   }
 
   /** The guest page for a listing with `patch` applied in memory. Nothing is saved. */
-  async previewExperience(id: string, patch: ExperiencePatch): Promise<Experience | null> {
+  async previewExperience(id: string, patch: ExperiencePatch, layout?: CategoryLayout): Promise<Experience | null> {
     const { data: row, error } = await this.db
       .from("experiences")
       .select(
@@ -72,7 +78,12 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     if (!row) return null;
     const merged: DbRow = { ...row, ...columnsFromPatch(patch) };
     if (patch.tags) merged.tags = patch.tags.map((tag) => ({ tag }));
-    return mapExperience(merged);
+    const experience = mapExperience(merged);
+    // The category the draft points at (or the saved one); `layout` shows an unsaved layout change.
+    const categoryId = patch.categoryId !== undefined ? patch.categoryId : (row.category_id as string | null | undefined) ?? null;
+    const category = categoryId ? await this.categoryById(categoryId) : null;
+    if (!category) return experience;
+    return { ...experience, category: { slug: category.slug, name: category.name, layout: layout ?? category.layout } };
   }
 
   async listCards(): Promise<ListingCard[]> {
@@ -181,6 +192,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
 
   async createExperience(input: ExperienceCreate): Promise<ExperienceAdmin> {
     const payload = {
+      ...(input.categoryId ? { category_id: input.categoryId } : {}),
       title: input.title,
       slug: input.slug,
       host_id: input.hostId,
@@ -284,7 +296,65 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
 
     if (error) throw error;
     if (!row) return null;
-    return mapAdmin(row);
+    return { ...mapAdmin(row), categoryId: await this.categoryIdOf(id) };
+  }
+
+  /** Read on its own, so a database without the categories migration still loads every listing. */
+  private async categoryIdOf(experienceId: string): Promise<string | null> {
+    const { data, error } = await this.db.from("experiences").select("category_id").eq("id", experienceId).maybeSingle();
+    if (error || !data) return null;
+    return ((data as { category_id?: string | null }).category_id as string | null | undefined) ?? null;
+  }
+
+  private async categoryById(id: string): Promise<Category | null> {
+    const { data, error } = await this.db.from("categories").select("*").eq("id", id).maybeSingle();
+    if (error || !data) return null;
+    return mapCategory(data);
+  }
+
+  async listCategories(): Promise<Category[]> {
+    const { data, error } = await this.db.from("categories").select("*").order("name");
+    if (error) throw error;
+    const { data: used, error: usedErr } = await this.db.from("experiences").select("category_id").not("category_id", "is", null);
+    if (usedErr) throw usedErr;
+    const counts = new Map<string, number>();
+    for (const r of used ?? []) counts.set(String(r.category_id), (counts.get(String(r.category_id)) ?? 0) + 1);
+    return (data ?? []).map((r) => ({ ...mapCategory(r), listingCount: counts.get(String(r.id)) ?? 0 }));
+  }
+
+  async getCategory(id: string): Promise<Category | null> {
+    return this.categoryById(id);
+  }
+
+  async createCategory(input: { name: string; slug: string; layout: CategoryLayout }): Promise<Category> {
+    const { data, error } = await this.db.from("categories").insert({ name: input.name, slug: input.slug, layout: input.layout }).select("*").single();
+    if (error) {
+      if (error.code === "23505") throw new ValidationError("That slug is taken.");
+      throw error;
+    }
+    return mapCategory(data);
+  }
+
+  async updateCategory(id: string, input: CategoryInput): Promise<Category> {
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (input.name !== undefined) payload.name = input.name;
+    if (input.slug !== undefined) payload.slug = input.slug;
+    if (input.layout !== undefined) payload.layout = input.layout;
+    const { data, error } = await this.db.from("categories").update(payload).eq("id", id).select("*").maybeSingle();
+    if (error) {
+      if (error.code === "23505") throw new ValidationError("That slug is taken.");
+      throw error;
+    }
+    if (!data) throw new Error(`Category ${id} not found`);
+    return mapCategory(data);
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const { count, error: countErr } = await this.db.from("experiences").select("id", { count: "exact", head: true }).eq("category_id", id);
+    if (countErr) throw countErr;
+    if (count) throw new ValidationError(`${count} listing${count === 1 ? " still uses" : "s still use"} this category. Move them first.`);
+    const { error } = await this.db.from("categories").delete().eq("id", id);
+    if (error) throw error;
   }
 
   async updateExperience(
@@ -413,6 +483,7 @@ function columnsFromPatch(patch: ExperiencePatch): Record<string, unknown> {
   if (patch.schedule !== undefined) payload.schedule = patch.schedule;
   if (patch.policy !== undefined) payload.policy = patch.policy;
   if (patch.content !== undefined) payload.content = patch.content;
+  if (patch.categoryId !== undefined) payload.category_id = patch.categoryId;
   if (patch.coverPhotoUrl !== undefined) {
     payload.cover_photo_url = patch.coverPhotoUrl;
   }
@@ -420,6 +491,15 @@ function columnsFromPatch(patch: ExperiencePatch): Record<string, unknown> {
     payload.cover_photo_alt = patch.coverPhotoAlt;
   }
   return payload;
+}
+
+function mapCategory(row: DbRow): Category {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    name: String(row.name),
+    layout: ((row.layout as CategoryLayout | null) ?? {}) as CategoryLayout,
+  };
 }
 
 function mapAdmin(row: DbRow): ExperienceAdmin {
@@ -463,6 +543,7 @@ function mapAdmin(row: DbRow): ExperienceAdmin {
     schedule: (row.schedule as ExperienceAdmin["schedule"]) ?? {},
     policy: (row.policy as ExperienceAdmin["policy"]) ?? null,
     content: (row.content as ExperienceAdmin["content"]) ?? {},
+    categoryId: null,
   };
 }
 

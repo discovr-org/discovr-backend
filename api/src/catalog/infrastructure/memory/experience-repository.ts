@@ -1,6 +1,10 @@
 import type { ExperienceMediaRepository } from "../../application/ports/experience-media-repository.js";
 import type { ExperienceRepository } from "../../application/ports/experience-repository.js";
+import { ValidationError } from "../../../shared/errors.js";
 import type {
+  Category,
+  CategoryInput,
+  CategoryLayout,
   Experience,
   ExperienceAdmin,
   ExperienceCreate,
@@ -46,6 +50,8 @@ export class MemoryExperienceRepository
   private readonly mediaIds = new WeakMap<object, string>();
   private readonly coverIds = new Map<string, string>();
   private readonly statuses = new Map<string, ExperienceStatus>();
+  private readonly categories = new Map<string, Category>();
+  private readonly categoryOf = new Map<string, string>();
   private readonly groupSizeMax = new Map<string, number>();
   private readonly covers = new Map<string, { url: string; alt: string }>();
   private readonly hosts = new Map<string, MemoryHost>();
@@ -79,20 +85,59 @@ export class MemoryExperienceRepository
     const hostId = this.experienceHostId.get(e.id);
     const host = hostId ? this.hosts.get(hostId) : undefined;
     if (host && !host.active) return null;
-    return e;
+    return this.withCategory(e, this.categoryOf.get(e.id) ?? null);
+  }
+
+  private withCategory(e: Experience, categoryId: string | null, layout?: CategoryLayout): Experience {
+    const c = categoryId ? this.categories.get(categoryId) : undefined;
+    return c ? { ...e, category: { slug: c.slug, name: c.name, layout: layout ?? c.layout } } : e;
   }
 
   // ponytail: memory mode previews only the text fields and content; Supabase applies every field.
-  async previewExperience(id: string, patch: ExperiencePatch): Promise<Experience | null> {
+  // ponytail: memory mode previews only the text fields, content and category; Supabase applies every field.
+  async previewExperience(id: string, patch: ExperiencePatch, layout?: CategoryLayout): Promise<Experience | null> {
     const e = this.experiences.find((x) => x.id === id);
     if (!e) return null;
-    return {
+    const draft: Experience = {
       ...e,
       title: patch.title ?? e.title,
       verdict: patch.verdict ?? e.verdict,
       about: patch.about ?? e.about,
       content: patch.content ?? e.content,
     };
+    return this.withCategory(draft, patch.categoryId !== undefined ? patch.categoryId : (this.categoryOf.get(id) ?? null), layout);
+  }
+
+  async listCategories(): Promise<Category[]> {
+    return [...this.categories.values()]
+      .map((c) => ({ ...c, listingCount: [...this.categoryOf.values()].filter((x) => x === c.id).length }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getCategory(id: string): Promise<Category | null> {
+    return this.categories.get(id) ?? null;
+  }
+
+  async createCategory(input: { name: string; slug: string; layout: CategoryLayout }): Promise<Category> {
+    if ([...this.categories.values()].some((c) => c.slug === input.slug)) throw new ValidationError("That slug is taken.");
+    const c: Category = { id: crypto.randomUUID(), ...input };
+    this.categories.set(c.id, c);
+    return c;
+  }
+
+  async updateCategory(id: string, input: CategoryInput): Promise<Category> {
+    const c = this.categories.get(id);
+    if (!c) throw new Error(`Category ${id} not found`);
+    if (input.slug !== undefined && [...this.categories.values()].some((x) => x.slug === input.slug && x.id !== id)) throw new ValidationError("That slug is taken.");
+    const next = { ...c, ...(input.name !== undefined ? { name: input.name } : {}), ...(input.slug !== undefined ? { slug: input.slug } : {}), ...(input.layout !== undefined ? { layout: input.layout } : {}) };
+    this.categories.set(id, next);
+    return next;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const used = [...this.categoryOf.values()].filter((x) => x === id).length;
+    if (used) throw new ValidationError(`${used} listing${used === 1 ? " still uses" : "s still use"} this category. Move them first.`);
+    this.categories.delete(id);
   }
 
   async getAdminById(id: string): Promise<ExperienceAdmin | null> {
@@ -208,6 +253,7 @@ export class MemoryExperienceRepository
     this.statuses.set(id, input.status ?? "draft");
     this.groupSizeMax.set(id, input.groupSizeMax ?? 8);
     this.experienceHostId.set(id, host.id);
+    if (input.categoryId) this.categoryOf.set(id, input.categoryId);
     return this.toAdmin(experience);
   }
 
@@ -218,6 +264,10 @@ export class MemoryExperienceRepository
     const e = this.experiences.find((x) => x.id === id);
     if (!e) throw new Error(`Experience ${id} not found`);
 
+    if (patch.categoryId !== undefined) {
+      if (patch.categoryId) this.categoryOf.set(id, patch.categoryId);
+      else this.categoryOf.delete(id);
+    }
     if (patch.slug !== undefined) {
       const clash = this.experiences.find(
         (x) => x.slug === patch.slug && x.id !== id,
@@ -462,6 +512,7 @@ export class MemoryExperienceRepository
         alt: p.alt,
       })),
       tags: [...e.tags],
+      categoryId: this.categoryOf.get(e.id) ?? null,
       schedule: schedule ?? {},
       policy: e.policy ?? null,
       content: e.content ?? {},

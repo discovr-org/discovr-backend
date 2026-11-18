@@ -12,6 +12,7 @@ import type { AssistantService } from "../assistant/api/assistant-service.js";
 import type { UserService } from "../user/api/user-service.js";
 import { ValidationError } from "../shared/errors.js";
 import { registerAuthRoutes } from "./auth-routes.js";
+import { registerCategoryRoutes } from "./category-routes.js";
 import { registerMcpRoutes } from "./mcp-routes.js";
 import { registerUserRoutes } from "./user-routes.js";
 import { sendApiError } from "./send-error.js";
@@ -28,6 +29,8 @@ export type HttpDeps = {
  */
 export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
   app.get("/health", async () => ({ ok: true, service: "api" }));
+
+  registerCategoryRoutes(app, deps.catalog);
 
   registerAuthRoutes(app, deps.auth);
   registerUserRoutes(app, { auth: deps.auth, users: deps.users });
@@ -101,7 +104,8 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     async (req, reply) => {
       try {
         const patch = sanitizeExperiencePatch(req.body ?? {});
-        return reply.send(await deps.catalog.previewExperience(req.params.id, patch));
+        const layout = (req.body as { categoryLayout?: unknown } | undefined)?.categoryLayout;
+        return reply.send(await deps.catalog.previewExperience(req.params.id, patch, layout));
       } catch (err) {
         return sendApiError(reply, err);
       }
@@ -349,6 +353,8 @@ function sanitizeExperiencePatch(body: ExperiencePatch): ExperiencePatch {
   if (body.content && typeof body.content === "object") {
     patch.content = body.content;
   }
+  if (body.categoryId === null) patch.categoryId = null;
+  else if (typeof body.categoryId === "string") patch.categoryId = body.categoryId;
   if (body.coverPhotoUrl === null) patch.coverPhotoUrl = null;
   else if (typeof body.coverPhotoUrl === "string") {
     patch.coverPhotoUrl = body.coverPhotoUrl;
@@ -470,6 +476,10 @@ function sanitizeExperienceCreate(body: ExperienceCreate): ExperienceCreate {
     groupSizeLabel:
       typeof body.groupSizeLabel === "string"
         ? body.groupSizeLabel
+        : undefined,
+    categoryId:
+      typeof body.categoryId === "string" && body.categoryId
+        ? body.categoryId
         : undefined,
   };
 }
