@@ -34,6 +34,13 @@ export class UpdateExperience {
     const existing = await this.repo.getAdminById(id);
     if (!existing) throw new NotFoundError(`Experience ${id} not found`);
 
+    if (patch.hostId) {
+      const hosts = await this.repo.listHosts();
+      if (!hosts.some((h) => h.id === patch.hostId)) {
+        throw new NotFoundError(`Host ${patch.hostId} not found`);
+      }
+    }
+
     const nextStatus = patch.status ?? existing.status;
     const nextVerdict =
       patch.verdict !== undefined ? patch.verdict : existing.verdict;

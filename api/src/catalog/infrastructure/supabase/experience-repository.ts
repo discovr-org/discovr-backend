@@ -148,7 +148,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         status: normalizeStatus(row.status),
         verdict: String(row.verdict ?? ""),
         priceFromInr: Number(row.price_from_inr ?? 0),
-        hostId: String(row.host_id),
+        hostId: row.host_id ? String(row.host_id) : null,
         hostBusinessName: String(host?.business_name ?? ""),
         hostActive: host?.active !== false,
         placeNeighborhood: String(row.place_neighborhood ?? ""),
@@ -172,6 +172,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     const counts = new Map<string, number>();
     const { data: exps } = await this.db.from("experiences").select("host_id");
     for (const row of exps ?? []) {
+      if (!row.host_id) continue;
       const id = String(row.host_id);
       counts.set(id, (counts.get(id) ?? 0) + 1);
     }
@@ -197,7 +198,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
       ...(input.categoryId ? { category_id: input.categoryId } : {}),
       title: input.title,
       slug: input.slug,
-      host_id: input.hostId,
+      host_id: input.hostId || null,
       status: input.status ?? "draft",
       verdict: input.verdict ?? null,
       about: input.about ?? "",
@@ -487,6 +488,7 @@ function columnsFromPatch(patch: ExperiencePatch): Record<string, unknown> {
   if (patch.verdict !== undefined) {
     payload.verdict = patch.verdict?.trim() || null;
   }
+  if (patch.hostId !== undefined) payload.host_id = patch.hostId || null;
   if (patch.about !== undefined) payload.about = patch.about;
   if (patch.placeName !== undefined) payload.place_name = patch.placeName.trim();
   if (patch.placeNeighborhood !== undefined) {
@@ -545,7 +547,7 @@ function mapAdmin(row: DbRow): ExperienceAdmin {
     durationMinutes: Number(row.duration_minutes ?? 0),
     groupSizeMax: Number(row.group_size_max ?? 1),
     groupSizeLabel: String(row.group_size_label ?? ""),
-    hostId: String(row.host_id),
+    hostId: row.host_id ? String(row.host_id) : null,
     hostBusinessName: String(host?.business_name ?? ""),
     coverPhotoUrl: row.cover_photo_url
       ? String(row.cover_photo_url)
@@ -591,7 +593,7 @@ function parsePriceTaxes(value: unknown): "extra" | "inclusive" {
 type DbRow = Record<string, unknown>;
 
 function mapExperience(row: DbRow): Experience {
-  const host = row.host as DbRow;
+  const host = (row.host as DbRow | null) ?? null;
   let photos = ((row.photos as DbRow[]) ?? [])
     .slice()
     .sort((a, b) => Number(a.sort_order) - Number(b.sort_order))
@@ -670,25 +672,27 @@ function mapExperience(row: DbRow): Experience {
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
-    host: {
-      businessName: String(host.business_name),
-      personName: String(host.person_name),
-      phone: String(host.phone_e164),
-      instagramHandle: host.instagram_handle
-        ? String(host.instagram_handle)
-        : undefined,
-      avatar: host.avatar_url
-        ? {
-            src: String(host.avatar_url),
-            alt: String(host.avatar_alt ?? host.person_name),
-          }
-        : undefined,
-      verified: Boolean(host.verified),
-      experienceCount:
-        host.experience_count != null ? Number(host.experience_count) : undefined,
-      languages: (host.languages as string[]) ?? [],
-      credit: parseHostCredit(host.credit),
-    },
+    host: host
+      ? {
+          businessName: String(host.business_name),
+          personName: String(host.person_name),
+          phone: String(host.phone_e164),
+          instagramHandle: host.instagram_handle
+            ? String(host.instagram_handle)
+            : undefined,
+          avatar: host.avatar_url
+            ? {
+                src: String(host.avatar_url),
+                alt: String(host.avatar_alt ?? host.person_name),
+              }
+            : undefined,
+          verified: Boolean(host.verified),
+          experienceCount:
+            host.experience_count != null ? Number(host.experience_count) : undefined,
+          languages: (host.languages as string[]) ?? [],
+          credit: parseHostCredit(host.credit),
+        }
+      : null,
     photos,
     verdict: String(row.verdict ?? ""),
     price: {

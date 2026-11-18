@@ -355,6 +355,8 @@ function sanitizeExperiencePatch(body: ExperiencePatch): ExperiencePatch {
   if (body.content && typeof body.content === "object") {
     patch.content = body.content;
   }
+  if (body.hostId === null) patch.hostId = null;
+  else if (typeof body.hostId === "string") patch.hostId = body.hostId;
   if (body.categoryId === null) patch.categoryId = null;
   else if (typeof body.categoryId === "string") patch.categoryId = body.categoryId;
   if (body.coverPhotoUrl === null) patch.coverPhotoUrl = null;
@@ -447,7 +449,7 @@ function sanitizeExperienceCreate(body: ExperienceCreate): ExperienceCreate {
   return {
     title: typeof body.title === "string" ? body.title : "",
     slug: typeof body.slug === "string" ? body.slug : undefined,
-    hostId: typeof body.hostId === "string" ? body.hostId : "",
+    hostId: typeof body.hostId === "string" && body.hostId.trim() ? body.hostId : null,
     status: isStatus(body.status) ? body.status : "draft",
     verdict:
       body.verdict === null

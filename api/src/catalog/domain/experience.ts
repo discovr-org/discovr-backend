@@ -121,7 +121,10 @@ export type ExperienceContent = {
   tagsOnDisplay?: string[];
   faqs?: Array<{ q: string; a: string }>;
   /** "link" = booking opens `links.book`; otherwise guests call the host. */
-  bookVia?: "call" | "link";
+  bookVia?: "call" | "link" | "custom";
+  bookLabel?: string;
+  barText?: string;
+  barNote?: string;
   /** true = the app skips photo blocks in the story. */
   hideStoryPhotos?: boolean;
   links?: {
@@ -167,7 +170,8 @@ export type Experience = {
   id: string;
   slug: string;
   title: string;
-  host: Host;
+  /** `null` for a place with no host. */
+  host: Host | null;
   photos: Photo[];
   verdict: string;
   price: Price;
@@ -194,7 +198,7 @@ export type ExperienceSummary = {
   status: ExperienceStatus;
   verdict: string;
   priceFromInr: number;
-  hostId: string;
+  hostId: string | null;
   hostBusinessName: string;
   hostActive: boolean;
   placeNeighborhood: string;
@@ -244,7 +248,8 @@ export type ExperienceAdmin = {
   durationMinutes: number;
   groupSizeMax: number;
   groupSizeLabel: string;
-  hostId: string;
+  /** `null` = no host. */
+  hostId: string | null;
   hostBusinessName: string;
   coverPhotoUrl?: string;
   coverPhotoAlt?: string;
@@ -293,6 +298,8 @@ export type ExperiencePatch = {
   policy?: Policy | null;
   content?: ExperienceContent;
   categoryId?: string | null;
+  /** `null` removes the host. */
+  hostId?: string | null;
   coverPhotoUrl?: string | null;
   coverPhotoAlt?: string | null;
 };
@@ -320,7 +327,8 @@ export type HostCreate = {
 export type ExperienceCreate = {
   title: string;
   slug?: string;
-  hostId: string;
+  /** Optional: a listing can have no host. */
+  hostId?: string | null;
   status?: ExperienceStatus;
   verdict?: string | null;
   about?: string;

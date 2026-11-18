@@ -65,6 +65,7 @@ export class MemoryExperienceRepository
     for (const e of this.experiences) {
       this.statuses.set(e.id, "published");
       this.groupSizeMax.set(e.id, 6);
+      if (!e.host) continue; // no host: nothing to link
       const id = hostKey(e.host.businessName, e.host.phone);
       if (!this.hosts.has(id)) {
         this.hosts.set(id, {
@@ -198,8 +199,8 @@ export class MemoryExperienceRepository
 
   async listExperiences(): Promise<ExperienceSummary[]> {
     return this.experiences.map((e) => {
-      const hostId = this.experienceHostId.get(e.id) ?? "";
-      const host = this.hosts.get(hostId);
+      const hostId = this.experienceHostId.get(e.id) ?? null;
+      const host = hostId ? this.hosts.get(hostId) : undefined;
       return {
         id: e.id,
         slug: e.slug,
@@ -208,7 +209,7 @@ export class MemoryExperienceRepository
         verdict: e.verdict,
         priceFromInr: e.price.fromAmount,
         hostId,
-        hostBusinessName: host?.businessName ?? e.host.businessName,
+        hostBusinessName: host?.businessName ?? e.host?.businessName ?? "",
         hostActive: host?.active ?? true,
         placeNeighborhood: e.place.neighborhood,
         hasPhoto: e.photos.length > 0 || this.covers.has(e.id),
@@ -236,21 +237,23 @@ export class MemoryExperienceRepository
     if ([...this.experiences].some((e) => e.slug === input.slug)) {
       throw new Error("Slug already taken");
     }
-    const host = this.hosts.get(input.hostId);
-    if (!host) throw new Error(`Host ${input.hostId} not found`);
+    const host = input.hostId ? this.hosts.get(input.hostId) : undefined;
+    if (input.hostId && !host) throw new Error(`Host ${input.hostId} not found`);
 
     const id = crypto.randomUUID();
     const experience: Experience = {
       id,
       slug: input.slug!,
       title: input.title,
-      host: {
-        businessName: host.businessName,
-        personName: host.personName,
-        phone: host.phone,
-        verified: false,
-        languages: [],
-      },
+      host: host
+        ? {
+            businessName: host.businessName,
+            personName: host.personName,
+            phone: host.phone,
+            verified: false,
+            languages: [],
+          }
+        : null,
       photos: [],
       verdict: input.verdict?.trim() ?? "",
       price: {
@@ -276,7 +279,7 @@ export class MemoryExperienceRepository
     this.experiences.push(experience);
     this.statuses.set(id, input.status ?? "draft");
     this.groupSizeMax.set(id, input.groupSizeMax ?? 8);
-    this.experienceHostId.set(id, host.id);
+    if (host) this.experienceHostId.set(id, host.id);
     if (input.categoryId) this.categoryOf.set(id, input.categoryId);
     return this.toAdmin(experience);
   }
@@ -291,6 +294,15 @@ export class MemoryExperienceRepository
     if (patch.categoryId !== undefined) {
       if (patch.categoryId) this.categoryOf.set(id, patch.categoryId);
       else this.categoryOf.delete(id);
+    }
+    if (patch.hostId !== undefined) {
+      const next = patch.hostId ? this.hosts.get(patch.hostId) : undefined;
+      if (patch.hostId && !next) throw new Error(`Host ${patch.hostId} not found`);
+      if (next) this.experienceHostId.set(id, next.id);
+      else this.experienceHostId.delete(id);
+      e.host = next
+        ? { businessName: next.businessName, personName: next.personName, phone: next.phone, verified: false, languages: [], credit: next.credit }
+        : null;
     }
     if (patch.slug !== undefined) {
       const clash = this.experiences.find(
@@ -398,7 +410,7 @@ export class MemoryExperienceRepository
     if (patch.credit !== undefined) host.credit = patch.credit;
 
     for (const e of this.experiences) {
-      if (this.experienceHostId.get(e.id) === id) {
+      if (e.host && this.experienceHostId.get(e.id) === id) {
         e.host.businessName = host.businessName;
         e.host.personName = host.personName;
         e.host.phone = host.phone;
@@ -503,7 +515,7 @@ export class MemoryExperienceRepository
 
   private toAdmin(e: Experience): ExperienceAdmin {
     const schedule = e.schedule as ExperienceAdmin["schedule"];
-    const hostId = this.experienceHostId.get(e.id) ?? "";
+    const hostId = this.experienceHostId.get(e.id) ?? null;
     return {
       id: e.id,
       slug: e.slug,
@@ -520,7 +532,7 @@ export class MemoryExperienceRepository
       groupSizeMax: this.groupSizeMax.get(e.id) ?? 6,
       groupSizeLabel: e.groupSizeLabel,
       hostId,
-      hostBusinessName: e.host.businessName,
+      hostBusinessName: e.host?.businessName ?? "",
       coverPhotoUrl: this.covers.get(e.id)?.url ?? e.photos[0]?.src,
       coverPhotoAlt: this.covers.get(e.id)?.alt ?? e.photos[0]?.alt,
       photos: e.photos.map((p) => ({

@@ -24,9 +24,6 @@ export class CreateExperience {
     if (!input.title?.trim()) {
       throw new ValidationError("Title can't be empty.");
     }
-    if (!input.hostId?.trim()) {
-      throw new ValidationError("Pick a host.");
-    }
     if (!input.placeName?.trim() || !input.placeNeighborhood?.trim()) {
       throw new ValidationError("Place name and neighborhood are required.");
     }
@@ -48,9 +45,13 @@ export class CreateExperience {
       throw new ValidationError("Published listings need a one-line verdict.");
     }
 
-    const hosts = await this.repo.listHosts();
-    if (!hosts.some((h) => h.id === input.hostId)) {
-      throw new NotFoundError(`Host ${input.hostId} not found`);
+    // No host is fine. A host that was named must exist.
+    const hostId = input.hostId?.trim() || null;
+    if (hostId) {
+      const hosts = await this.repo.listHosts();
+      if (!hosts.some((h) => h.id === hostId)) {
+        throw new NotFoundError(`Host ${hostId} not found`);
+      }
     }
 
     const slug = (input.slug?.trim() || slugify(input.title)).trim();
@@ -61,7 +62,7 @@ export class CreateExperience {
         ...input,
         title: input.title.trim(),
         slug,
-        hostId: input.hostId.trim(),
+        hostId,
         status,
         verdict,
         about: input.about ?? "",
