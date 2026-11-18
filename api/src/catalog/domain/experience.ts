@@ -136,7 +136,7 @@ export type ExperienceContent = {
 /** A category's page layout. The guest app draws a listing from this plus the listing's own fields. */
 export type CategoryLayout = {
   /** Order and visibility of the page parts. */
-  sections?: Array<{ id: string; show?: boolean }>;
+  sections?: Array<{ id: string; show?: boolean; space?: "none" | "large"; hide?: "mobile" | "desktop" }>;
   /** The story, in order. Blocks name the listing field they fill. */
   story?: unknown[];
 };
@@ -149,6 +149,17 @@ export type Category = {
   /** How many listings use it. Filled in by the list. */
   listingCount?: number;
 };
+
+/** Words and links the admin sets. A missing field means the guest app keeps its built-in text. */
+export type SiteSettings = {
+  tagline?: string;
+  searchPlaceholder?: string;
+  footerPromise?: string;
+  footerLinks?: Array<{ label: string; href: string }>;
+};
+
+/** One section of the guest home page: a title, how it draws, and which listings (by slug) in order. */
+export type HomeSection = { id: string; title: string; layout: "rail" | "stack"; slugs: string[] };
 
 export type CategoryInput = { name?: string; slug?: string; layout?: CategoryLayout };
 

@@ -12,7 +12,7 @@ import type { AssistantService } from "../assistant/api/assistant-service.js";
 import type { UserService } from "../user/api/user-service.js";
 import { ValidationError } from "../shared/errors.js";
 import { registerAuthRoutes } from "./auth-routes.js";
-import { registerCategoryRoutes } from "./category-routes.js";
+import { registerCategoryRoutes, registerHomeFeedRoutes, registerSiteSettingsRoutes } from "./category-routes.js";
 import { registerMcpRoutes } from "./mcp-routes.js";
 import { registerUserRoutes } from "./user-routes.js";
 import { sendApiError } from "./send-error.js";
@@ -31,6 +31,8 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
   app.get("/health", async () => ({ ok: true, service: "api" }));
 
   registerCategoryRoutes(app, deps.catalog);
+  registerHomeFeedRoutes(app, deps.catalog);
+  registerSiteSettingsRoutes(app, deps.catalog);
 
   registerAuthRoutes(app, deps.auth);
   registerUserRoutes(app, { auth: deps.auth, users: deps.users });

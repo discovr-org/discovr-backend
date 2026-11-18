@@ -1,5 +1,7 @@
 import type {
   Category,
+  HomeSection,
+  SiteSettings,
   CategoryInput,
   CategoryLayout,
   Experience,
@@ -24,6 +26,11 @@ export interface ExperienceRepository {
     /** Show the page with this layout in place of the category's saved one. */
     layout?: CategoryLayout,
   ): Promise<Experience | null>;
+  getSiteSettings(): Promise<SiteSettings>;
+  saveSiteSettings(settings: SiteSettings): Promise<SiteSettings>;
+  /** `null` until the admin saves a feed. */
+  getHomeFeed(): Promise<HomeSection[] | null>;
+  saveHomeFeed(sections: HomeSection[]): Promise<HomeSection[]>;
   listCategories(): Promise<Category[]>;
   getCategory(id: string): Promise<Category | null>;
   createCategory(input: Required<Pick<CategoryInput, "name" | "slug">> & { layout: CategoryLayout }): Promise<Category>;

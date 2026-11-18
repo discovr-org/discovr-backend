@@ -3,6 +3,8 @@ import type { ExperienceRepository } from "../../application/ports/experience-re
 import { ValidationError } from "../../../shared/errors.js";
 import type {
   Category,
+  HomeSection,
+  SiteSettings,
   CategoryInput,
   CategoryLayout,
   Experience,
@@ -310,6 +312,30 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     const { data, error } = await this.db.from("categories").select("*").eq("id", id).maybeSingle();
     if (error || !data) return null;
     return mapCategory(data);
+  }
+
+  async getSiteSettings(): Promise<SiteSettings> {
+    const { data, error } = await this.db.from("site_settings").select("settings").eq("id", 1).maybeSingle();
+    if (error) throw error;
+    return (data?.settings as SiteSettings | undefined) ?? {};
+  }
+
+  async saveSiteSettings(settings: SiteSettings): Promise<SiteSettings> {
+    const { error } = await this.db.from("site_settings").upsert({ id: 1, settings, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    return settings;
+  }
+
+  async getHomeFeed(): Promise<HomeSection[] | null> {
+    const { data, error } = await this.db.from("home_feed").select("sections").eq("id", 1).maybeSingle();
+    if (error) throw error;
+    return data ? (data.sections as HomeSection[]) : null;
+  }
+
+  async saveHomeFeed(sections: HomeSection[]): Promise<HomeSection[]> {
+    const { error } = await this.db.from("home_feed").upsert({ id: 1, sections, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    return sections;
   }
 
   async listCategories(): Promise<Category[]> {

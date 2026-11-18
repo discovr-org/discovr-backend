@@ -4,6 +4,44 @@ import { sendApiError } from "./send-error.js";
 
 type Body = { name?: unknown; slug?: unknown; layout?: unknown };
 
+/** Site settings: public read, admin save. */
+export function registerSiteSettingsRoutes(app: FastifyInstance, catalog: CatalogService) {
+  app.get("/v1/catalog/site", async (_req, reply) => {
+    try {
+      return reply.send(await catalog.getSiteSettings());
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
+  app.put<{ Body: { settings?: unknown } }>("/v1/admin/site", async (req, reply) => {
+    try {
+      return reply.send(await catalog.saveSiteSettings(req.body?.settings));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+}
+
+/** Home feed: public read, admin save (the /v1/admin gate covers the PUT). */
+export function registerHomeFeedRoutes(app: FastifyInstance, catalog: CatalogService) {
+  app.get("/v1/catalog/home", async (_req, reply) => {
+    try {
+      return reply.send(await catalog.getHomeFeed());
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
+  app.put<{ Body: { sections?: unknown } }>("/v1/admin/home", async (req, reply) => {
+    try {
+      return reply.send(await catalog.saveHomeFeed(req.body?.sections));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+}
+
 /** Categories: the page layouts listings share. Admin only (the /v1/admin gate covers them). */
 export function registerCategoryRoutes(app: FastifyInstance, catalog: CatalogService) {
   app.get("/v1/admin/categories", async (_req, reply) => {

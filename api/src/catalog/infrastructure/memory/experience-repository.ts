@@ -3,6 +3,8 @@ import type { ExperienceRepository } from "../../application/ports/experience-re
 import { ValidationError } from "../../../shared/errors.js";
 import type {
   Category,
+  HomeSection,
+  SiteSettings,
   CategoryInput,
   CategoryLayout,
   Experience,
@@ -106,6 +108,28 @@ export class MemoryExperienceRepository
       content: patch.content ?? e.content,
     };
     return this.withCategory(draft, patch.categoryId !== undefined ? patch.categoryId : (this.categoryOf.get(id) ?? null), layout);
+  }
+
+  private siteSettings: SiteSettings = {};
+
+  async getSiteSettings(): Promise<SiteSettings> {
+    return this.siteSettings;
+  }
+
+  async saveSiteSettings(settings: SiteSettings): Promise<SiteSettings> {
+    this.siteSettings = settings;
+    return settings;
+  }
+
+  private homeFeed: HomeSection[] | null = null;
+
+  async getHomeFeed(): Promise<HomeSection[] | null> {
+    return this.homeFeed;
+  }
+
+  async saveHomeFeed(sections: HomeSection[]): Promise<HomeSection[]> {
+    this.homeFeed = sections;
+    return sections;
   }
 
   async listCategories(): Promise<Category[]> {

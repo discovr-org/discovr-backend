@@ -17,8 +17,13 @@ export function cleanLayout(value: unknown): CategoryLayout {
   const layout: CategoryLayout = {};
   if (Array.isArray(v.sections)) {
     layout.sections = v.sections
-      .filter((s): s is { id: string; show?: boolean } => !!s && typeof (s as { id?: unknown }).id === "string")
-      .map((s) => (s.show === false ? { id: s.id, show: false } : { id: s.id }));
+      .filter((s): s is { id: string; show?: boolean; space?: unknown; hide?: unknown } => !!s && typeof (s as { id?: unknown }).id === "string")
+      .map((s) => ({
+        id: s.id,
+        ...(s.show === false ? { show: false } : {}),
+        ...(s.space === "none" || s.space === "large" ? { space: s.space } : {}),
+        ...(s.hide === "mobile" || s.hide === "desktop" ? { hide: s.hide } : {}),
+      }));
   }
   if (Array.isArray(v.story)) {
     layout.story = v.story.filter((b) => !!b && typeof b === "object" && typeof (b as { type?: unknown }).type === "string");

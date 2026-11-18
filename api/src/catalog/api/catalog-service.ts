@@ -4,6 +4,8 @@ import { DeleteExperience } from "../application/delete-experience.js";
 import { DeleteHost } from "../application/delete-host.js";
 import { GetAdminExperience } from "../application/get-admin-experience.js";
 import { Categories, cleanLayout } from "../application/categories.js";
+import { HomeFeed } from "../application/home-feed.js";
+import { SiteSettingsStore } from "../application/site-settings.js";
 import { PreviewExperience } from "../application/preview-experience.js";
 import { GetExperience } from "../application/get-experience.js";
 import { ListExperiences } from "../application/list-experiences.js";
@@ -47,6 +49,8 @@ export class CatalogService {
   private readonly getAdminExperience: GetAdminExperience;
   private readonly previewDraft: PreviewExperience;
   private readonly categories: Categories;
+  private readonly homeFeed: HomeFeed;
+  private readonly siteSettings: SiteSettingsStore;
   private readonly listCards: ListCards;
   private readonly listExperiences: ListExperiences;
   private readonly listHosts: ListHosts;
@@ -74,6 +78,8 @@ export class CatalogService {
     this.getAdminExperience = new GetAdminExperience(repo);
     this.previewDraft = new PreviewExperience(repo);
     this.categories = new Categories(repo);
+    this.homeFeed = new HomeFeed(repo);
+    this.siteSettings = new SiteSettingsStore(repo);
     this.listCards = new ListCards(repo, 60 * 1000);
     this.listExperiences = new ListExperiences(repo);
     this.listHosts = new ListHosts(repo);
@@ -139,6 +145,22 @@ export class CatalogService {
   async previewExperience(id: string, patch: ExperiencePatch, categoryLayout?: unknown) {
     const layout = categoryLayout === undefined ? undefined : cleanLayout(categoryLayout);
     return presentExperience(await this.previewDraft.execute(id, patch, layout));
+  }
+
+  async getSiteSettings() {
+    return { settings: await this.siteSettings.get() };
+  }
+
+  async saveSiteSettings(settings: unknown) {
+    return { settings: await this.siteSettings.save(settings) };
+  }
+
+  async getHomeFeed() {
+    return { sections: await this.homeFeed.get() };
+  }
+
+  async saveHomeFeed(sections: unknown) {
+    return { sections: await this.homeFeed.save(sections) };
   }
 
   async getCategories() {
