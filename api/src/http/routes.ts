@@ -95,6 +95,19 @@ export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
     },
   );
 
+  /** The guest page for an unsaved draft: the admin editor's live preview. Writes nothing. */
+  app.post<{ Params: { id: string }; Body: ExperiencePatch }>(
+    "/v1/admin/experiences/:id/preview",
+    async (req, reply) => {
+      try {
+        const patch = sanitizeExperiencePatch(req.body ?? {});
+        return reply.send(await deps.catalog.previewExperience(req.params.id, patch));
+      } catch (err) {
+        return sendApiError(reply, err);
+      }
+    },
+  );
+
   app.patch<{ Params: { id: string }; Body: ExperiencePatch }>(
     "/v1/admin/experiences/:id",
     async (req, reply) => {

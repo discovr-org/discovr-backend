@@ -82,6 +82,19 @@ export class MemoryExperienceRepository
     return e;
   }
 
+  // ponytail: memory mode previews only the text fields and content; Supabase applies every field.
+  async previewExperience(id: string, patch: ExperiencePatch): Promise<Experience | null> {
+    const e = this.experiences.find((x) => x.id === id);
+    if (!e) return null;
+    return {
+      ...e,
+      title: patch.title ?? e.title,
+      verdict: patch.verdict ?? e.verdict,
+      about: patch.about ?? e.about,
+      content: patch.content ?? e.content,
+    };
+  }
+
   async getAdminById(id: string): Promise<ExperienceAdmin | null> {
     const e = this.experiences.find((x) => x.id === id);
     if (!e) return null;

@@ -14,6 +14,8 @@ import type {
 export interface ExperienceRepository {
   getBySlug(slug: string): Promise<Experience | null>;
   getAdminById(id: string): Promise<ExperienceAdmin | null>;
+  /** The guest page for a listing with `patch` applied in memory. Nothing is saved. */
+  previewExperience(id: string, patch: ExperiencePatch): Promise<Experience | null>;
   /** Published listings whose host is active. */
   listCards(): Promise<ListingCard[]>;
   listExperiences(): Promise<ExperienceSummary[]>;

@@ -50,6 +50,31 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     return mapExperience(row);
   }
 
+  /** The guest page for a listing with `patch` applied in memory. Nothing is saved. */
+  async previewExperience(id: string, patch: ExperiencePatch): Promise<Experience | null> {
+    const { data: row, error } = await this.db
+      .from("experiences")
+      .select(
+        `
+        *,
+        host:hosts(*),
+        photos:experience_photos(*),
+        inclusions:experience_inclusions(*),
+        menu_pages:experience_menu_pages(*),
+        tags:experience_tags(tag),
+        reviews:reviews(*)
+      `,
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!row) return null;
+    const merged: DbRow = { ...row, ...columnsFromPatch(patch) };
+    if (patch.tags) merged.tags = patch.tags.map((tag) => ({ tag }));
+    return mapExperience(merged);
+  }
+
   async listCards(): Promise<ListingCard[]> {
     const { data, error } = await this.db
       .from("experiences")
@@ -266,46 +291,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     id: string,
     patch: ExperiencePatch,
   ): Promise<ExperienceAdmin> {
-    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (patch.title !== undefined) payload.title = patch.title.trim();
-    if (patch.slug !== undefined) payload.slug = patch.slug.trim();
-    if (patch.status !== undefined) {
-      payload.status = patch.status;
-      if (patch.status === "published") {
-        payload.published_at = new Date().toISOString();
-      }
-    }
-    if (patch.verdict !== undefined) {
-      payload.verdict = patch.verdict?.trim() || null;
-    }
-    if (patch.about !== undefined) payload.about = patch.about;
-    if (patch.placeName !== undefined) payload.place_name = patch.placeName.trim();
-    if (patch.placeNeighborhood !== undefined) {
-      payload.place_neighborhood = patch.placeNeighborhood.trim();
-    }
-    if (patch.placeLat !== undefined) payload.place_lat = patch.placeLat;
-    if (patch.placeLng !== undefined) payload.place_lng = patch.placeLng;
-    if (patch.priceFromInr !== undefined) {
-      payload.price_from_inr = patch.priceFromInr;
-    }
-    if (patch.durationMinutes !== undefined) {
-      payload.duration_minutes = patch.durationMinutes;
-    }
-    if (patch.groupSizeMax !== undefined) {
-      payload.group_size_max = patch.groupSizeMax;
-    }
-    if (patch.groupSizeLabel !== undefined) {
-      payload.group_size_label = patch.groupSizeLabel.trim();
-    }
-    if (patch.schedule !== undefined) payload.schedule = patch.schedule;
-    if (patch.policy !== undefined) payload.policy = patch.policy;
-    if (patch.content !== undefined) payload.content = patch.content;
-    if (patch.coverPhotoUrl !== undefined) {
-      payload.cover_photo_url = patch.coverPhotoUrl;
-    }
-    if (patch.coverPhotoAlt !== undefined) {
-      payload.cover_photo_alt = patch.coverPhotoAlt;
-    }
+    const payload = columnsFromPatch(patch);
 
     const { error } = await this.db
       .from("experiences")
@@ -389,6 +375,51 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     }
     if (!data?.length) throw new Error(`Host ${id} not found`);
   }
+}
+
+/** The `experiences` columns a patch changes. Shared by save and by the unsaved-draft preview. */
+function columnsFromPatch(patch: ExperiencePatch): Record<string, unknown> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.title !== undefined) payload.title = patch.title.trim();
+  if (patch.slug !== undefined) payload.slug = patch.slug.trim();
+  if (patch.status !== undefined) {
+    payload.status = patch.status;
+    if (patch.status === "published") {
+      payload.published_at = new Date().toISOString();
+    }
+  }
+  if (patch.verdict !== undefined) {
+    payload.verdict = patch.verdict?.trim() || null;
+  }
+  if (patch.about !== undefined) payload.about = patch.about;
+  if (patch.placeName !== undefined) payload.place_name = patch.placeName.trim();
+  if (patch.placeNeighborhood !== undefined) {
+    payload.place_neighborhood = patch.placeNeighborhood.trim();
+  }
+  if (patch.placeLat !== undefined) payload.place_lat = patch.placeLat;
+  if (patch.placeLng !== undefined) payload.place_lng = patch.placeLng;
+  if (patch.priceFromInr !== undefined) {
+    payload.price_from_inr = patch.priceFromInr;
+  }
+  if (patch.durationMinutes !== undefined) {
+    payload.duration_minutes = patch.durationMinutes;
+  }
+  if (patch.groupSizeMax !== undefined) {
+    payload.group_size_max = patch.groupSizeMax;
+  }
+  if (patch.groupSizeLabel !== undefined) {
+    payload.group_size_label = patch.groupSizeLabel.trim();
+  }
+  if (patch.schedule !== undefined) payload.schedule = patch.schedule;
+  if (patch.policy !== undefined) payload.policy = patch.policy;
+  if (patch.content !== undefined) payload.content = patch.content;
+  if (patch.coverPhotoUrl !== undefined) {
+    payload.cover_photo_url = patch.coverPhotoUrl;
+  }
+  if (patch.coverPhotoAlt !== undefined) {
+    payload.cover_photo_alt = patch.coverPhotoAlt;
+  }
+  return payload;
 }
 
 function mapAdmin(row: DbRow): ExperienceAdmin {

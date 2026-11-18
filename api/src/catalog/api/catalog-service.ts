@@ -3,6 +3,7 @@ import { CreateHost } from "../application/create-host.js";
 import { DeleteExperience } from "../application/delete-experience.js";
 import { DeleteHost } from "../application/delete-host.js";
 import { GetAdminExperience } from "../application/get-admin-experience.js";
+import { PreviewExperience } from "../application/preview-experience.js";
 import { GetExperience } from "../application/get-experience.js";
 import { ListExperiences } from "../application/list-experiences.js";
 import { ListCards } from "../application/list-cards.js";
@@ -41,6 +42,7 @@ import {
 export class CatalogService {
   private readonly getExperience: GetExperience;
   private readonly getAdminExperience: GetAdminExperience;
+  private readonly previewDraft: PreviewExperience;
   private readonly listCards: ListCards;
   private readonly listExperiences: ListExperiences;
   private readonly listHosts: ListHosts;
@@ -66,6 +68,7 @@ export class CatalogService {
   ) {
     this.getExperience = new GetExperience(repo);
     this.getAdminExperience = new GetAdminExperience(repo);
+    this.previewDraft = new PreviewExperience(repo);
     this.listCards = new ListCards(repo, 60 * 1000);
     this.listExperiences = new ListExperiences(repo);
     this.listHosts = new ListHosts(repo);
@@ -125,6 +128,11 @@ export class CatalogService {
   async getAdminExperienceById(id: string) {
     const row = await this.getAdminExperience.execute(id);
     return presentExperienceAdmin(row);
+  }
+
+  /** The guest page for an unsaved draft. Nothing is written. */
+  async previewExperience(id: string, patch: ExperiencePatch) {
+    return presentExperience(await this.previewDraft.execute(id, patch));
   }
 
   async addExperience(input: ExperienceCreate) {
