@@ -5,7 +5,8 @@ import { normalizePhoneE164 } from "../../shared/phone.js";
 import type { OtpRepository } from "./ports/otp-repository.js";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 60 * 1000;
+/** One code per phone number every 30 seconds. The guest app's resend countdown matches. */
+const RESEND_COOLDOWN_MS = 30 * 1000;
 
 export class RequestOtp {
   constructor(
@@ -20,8 +21,9 @@ export class RequestOtp {
     const latest = await this.otps.findLatestActive(phone, now);
     if (latest) {
       const created = new Date(latest.createdAt).getTime();
-      if (now.getTime() - created < RESEND_COOLDOWN_MS) {
-        throw new ValidationError("Wait a minute before requesting another code.");
+      const waitMs = RESEND_COOLDOWN_MS - (now.getTime() - created);
+      if (waitMs > 0) {
+        throw new ValidationError(`Wait ${Math.ceil(waitMs / 1000)} seconds before requesting another code.`);
       }
     }
 
