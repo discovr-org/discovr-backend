@@ -137,7 +137,11 @@ export type ExperienceContent = {
 };
 
 /** A category's page layout. The guest app draws a listing from this plus the listing's own fields. */
+export type ActionButton = "call" | "directions" | "instagram" | "whatsapp" | "website" | "share";
+
 export type CategoryLayout = {
+  /** Which buttons the Action buttons row shows, in order. Missing = the usual four. */
+  actionButtons?: ActionButton[];
   /** Order and visibility of the page parts. */
   sections?: Array<{ id: string; show?: boolean; space?: "none" | "large"; hide?: "mobile" | "desktop" }>;
   /** The story, in order. Blocks name the listing field they fill. */

@@ -1,5 +1,5 @@
 import { NotFoundError, ValidationError } from "../domain/errors.js";
-import type { Category, CategoryInput, CategoryLayout } from "../domain/experience.js";
+import type { ActionButton, Category, CategoryInput, CategoryLayout } from "../domain/experience.js";
 import type { ExperienceRepository } from "./ports/experience-repository.js";
 
 const slugOf = (name: string) =>
@@ -13,8 +13,13 @@ const slugOf = (name: string) =>
 /** A layout is stored as sent; only its outline is checked so a bad save can't break the guest page. */
 export function cleanLayout(value: unknown): CategoryLayout {
   if (!value || typeof value !== "object") return {};
-  const v = value as { sections?: unknown; story?: unknown };
+  const v = value as { sections?: unknown; story?: unknown; actionButtons?: unknown };
   const layout: CategoryLayout = {};
+  if (Array.isArray(v.actionButtons)) {
+    const known: ActionButton[] = ["call", "directions", "instagram", "whatsapp", "website", "share"];
+    const picked = [...new Set(v.actionButtons)].filter((b): b is ActionButton => known.includes(b as ActionButton));
+    if (picked.length) layout.actionButtons = picked;
+  }
   if (Array.isArray(v.sections)) {
     layout.sections = v.sections
       .filter((s): s is { id: string; show?: boolean; space?: unknown; hide?: unknown } => !!s && typeof (s as { id?: unknown }).id === "string")
