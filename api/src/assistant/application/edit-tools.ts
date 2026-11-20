@@ -2,11 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import type { ExperiencePatch } from "../../catalog/domain/experience.js";
-import { listingBasics, listingExtras } from "../domain/listing-input.js";
+import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
 import { defined, run } from "./tool-result.js";
 
 const id = z.string().describe("Id from list_listings or find_hosts.");
-const editable = z.object(listingBasics).omit({ hostId: true }).partial().shape;
+const editable = {
+  ...z.object(listingBasics).omit({ hostId: true }).partial().shape,
+  hostId: z.string().nullable().optional().describe("Host id, or null to remove the host."),
+};
 
 /**
  * Tools that change things that already exist. Status and active only move through their own
@@ -81,7 +84,7 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
     "update_listing",
     {
       description:
-        "Change fields on a listing. Send only what changes. Lists (faqs, included, carry, tags...) replace the old list, so send the full list. Can't change status, slug or host.",
+        "Change fields on a listing. Send only what changes. Lists (faqs, included, carry, tags...) replace the old list, so send the full list. Can change the host (hostId, or null for none) and the category (categoryId). Can't change status or slug.",
       inputSchema: { id, ...editable, ...listingExtras },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
@@ -96,7 +99,7 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
           schedule: schedule && { ...now.schedule, ...defined(schedule) },
           content: content && {
             ...now.content,
-            ...defined(content),
+            ...defined(toContent(content)),
             links: { ...now.content?.links, ...content.links },
           },
         });

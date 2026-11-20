@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
-import { listingBasics, listingExtras } from "../domain/listing-input.js";
+import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
 import { registerEditTools } from "./edit-tools.js";
 import type { PlaceFinder } from "./ports/place-finder.js";
 import { run } from "./tool-result.js";
@@ -63,6 +63,21 @@ export function registerTools(
   );
 
   server.registerTool(
+    "list_categories",
+    {
+      description:
+        "Page layouts a listing can join, like Sundowners or Surfing. Pick the one that fits and pass its id as categoryId when you create the listing. A category fixes the page layout; the listing only fills in its content. If none fits, ask the user.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    () =>
+      run(async () => {
+        const { categories } = await catalog.getCategories();
+        return categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, listings: c.listingCount }));
+      }),
+  );
+
+  server.registerTool(
     "create_host_draft",
     {
       description: "Create a host as an inactive draft. A human reviews and turns it on in the admin.",
@@ -83,13 +98,13 @@ export function registerTools(
     "create_listing_draft",
     {
       description:
-        "Create a listing as a draft (never published). Needs a hostId. Text only: no photos. If lat/lng or the host are unknown, ask the user first.",
+        "Create a listing as a draft (never published). A host is optional: leave hostId out for a place with no host. Pass categoryId (from list_categories) to use a page layout. Text only: no photos. If lat/lng are unknown, ask the user first.",
       inputSchema: { ...listingBasics, ...listingExtras },
     },
     ({ tags, schedule, policy, content, ...basics }) =>
       run(async () => {
         const created = await catalog.addExperience({ ...basics, status: "draft" });
-        const extras = { tags, schedule, policy, content };
+        const extras = { tags, schedule, policy, content: content && toContent(content) };
         const hasExtras = Object.values(extras).some((v) => v !== undefined);
         // ponytail: two calls (create, then patch) because create only takes the basics; not atomic.
         const saved = hasExtras

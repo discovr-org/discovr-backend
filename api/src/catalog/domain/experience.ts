@@ -120,6 +120,11 @@ export type ExperienceContent = {
   difficulty?: string;
   tagsOnDisplay?: string[];
   faqs?: Array<{ q: string; a: string }>;
+  /** Process steps and price rows, read by category layouts. */
+  steps?: Array<{ marker?: string; title: string; caption?: string }>;
+  packages?: Array<{ name: string; price: string; detail?: string }>;
+  /** Which buttons the Action buttons row shows, in order. Missing = Call, Directions, Instagram, Share. */
+  actionButtons?: ActionButton[];
   /** "link" = booking opens `links.book`; otherwise guests call the host. */
   bookVia?: "call" | "link" | "custom";
   bookLabel?: string;
@@ -132,6 +137,7 @@ export type ExperienceContent = {
     book?: ContentLink;
     whatsapp?: ContentLink;
     instagram?: ContentLink;
+    website?: ContentLink;
     menu?: ContentLink;
   };
 };
