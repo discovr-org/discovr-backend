@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
+import { parseMapsCoords } from "../domain/maps-link.js";
 import { registerCategoryTools } from "./category-tools.js";
 import { registerEditTools } from "./edit-tools.js";
 import type { PlaceFinder } from "./ports/place-finder.js";
@@ -103,9 +104,12 @@ export function registerTools(
         "Create a listing as a draft (never published). A host is optional: leave hostId out for a place with no host. Pass categoryId (from list_categories) to use a page layout. Text only: no photos. If lat/lng are unknown, ask the user first.",
       inputSchema: { ...listingBasics, ...listingExtras },
     },
-    ({ tags, schedule, policy, content, ...basics }) =>
+    ({ tags, schedule, policy, content, placeLat, placeLng, ...basics }) =>
       run(async () => {
-        const created = await catalog.addExperience({ ...basics, status: "draft" });
+        // The map link is the input, as in the admin: the pin is read out of it unless coordinates were given.
+        const at = placeLat !== undefined && placeLng !== undefined ? { lat: placeLat, lng: placeLng } : parseMapsCoords(content?.links?.maps?.url ?? "");
+        if (!at) throw new Error("Need the place's position. Pass content.links.maps with a long Google Maps link (the pin is in it), or call find_place and pass placeLat and placeLng. Never guess.");
+        const created = await catalog.addExperience({ ...basics, placeLat: at.lat, placeLng: at.lng, status: "draft" });
         const extras = { tags, schedule, policy, content: content && toContent(content) };
         const hasExtras = Object.values(extras).some((v) => v !== undefined);
         // ponytail: two calls (create, then patch) because create only takes the basics; not atomic.

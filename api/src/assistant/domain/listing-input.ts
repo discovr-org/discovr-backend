@@ -15,8 +15,8 @@ export const listingBasics = {
   about: z.string().optional().describe("Main description."),
   placeName: z.string().describe("Venue or meeting place name."),
   placeNeighborhood: z.string().describe("Area, e.g. 'Anjuna'."),
-  placeLat: z.number().describe("Latitude. Never guess: ask the user, or read it from a Google Maps link."),
-  placeLng: z.number().describe("Longitude. Never guess."),
+  placeLat: z.number().optional().describe("Latitude. Never guess. Leave out if you give content.links.maps (a long Google Maps link with the pin in it); otherwise ask the user or call find_place."),
+  placeLng: z.number().optional().describe("Longitude. Never guess. Leave out when content.links.maps carries it."),
   priceFromInr: z.number().int().min(0).optional().describe("Lowest price in whole rupees."),
   durationMinutes: z.number().int().positive().optional(),
   groupSizeMax: z.number().int().positive().optional(),
@@ -27,12 +27,14 @@ export const listingExtras = {
   tags: z.array(z.string()).optional(),
   schedule: z
     .object({
+      days: z.string().optional().describe("Days it runs, e.g. 'Daily'."),
       timeSlot: z.string().optional().describe("Usual hours, e.g. '8am – 1am'."),
       closedDays: z.array(day).optional(),
       altDays: z.array(day).optional(),
       altTimeSlot: z.string().optional(),
       bestTime: z.string().optional(),
       ageGroup: z.string().optional(),
+      minPeople: z.string().optional(),
     })
     .optional(),
   policy: z
@@ -40,6 +42,7 @@ export const listingExtras = {
       summary: z.string(),
       booking: z.array(z.string()),
       cancellation: z.array(z.string()),
+      showFinalTermsNote: z.boolean().optional(),
     })
     .optional(),
   content: z
@@ -47,6 +50,10 @@ export const listingExtras = {
       format: z.enum(["trip", "venue"]).optional().describe("trip = tour/activity; venue = bar/restaurant."),
       pitch: z.string().optional().describe("Italic one-liner at the top of About."),
       priceUnit: z.string().optional().describe("Short, max 20 chars, e.g. 'per person'."),
+      taxes: z.enum(["inclusive", "extra"]).optional().describe("Whether the price includes taxes. Default inclusive."),
+      walkIn: z.boolean().optional().describe("Venues only: no booking needed."),
+      durationLabel: z.string().optional().describe("e.g. '1 hr 30 mins'."),
+      aka: z.string().optional().describe("Also known as."),
       priceNarrative: z.string().optional(),
       meetingPoint: z.string().optional(),
       additionalInfo: z.string().optional(),

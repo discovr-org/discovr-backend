@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
+import { fieldsForLayout, isFilled } from "../domain/layout-fields.js";
 import { effectiveSections, fixedShown, LAYOUT_GUIDE, layoutInput } from "../domain/layout-input.js";
 import { defined, run } from "./tool-result.js";
 
@@ -48,10 +49,43 @@ export function registerCategoryTools(server: McpServer, catalog: CatalogService
               story: c.layout.story ?? [],
               actionButtons: c.layout.actionButtons ?? "default: call, directions, instagram, share",
             },
+            // What a listing in this category should fill in, and what a human has to upload.
+            ...fieldsForLayout(c.layout),
             listings: experiences.filter((x) => x.categoryId === c.id).map(slim),
           }));
         if (id && rows.length === 0) throw new Error(`Category ${id} not found`);
         return { categories: rows, ...(id ? {} : { listingsWithoutCategory: experiences.filter((x) => !x.categoryId).map(slim) }) };
+      }),
+  );
+
+  server.registerTool(
+    "check_listing_layout",
+    {
+      description:
+        "For a listing in a category: which of the fields its category's layout reads are still empty. Use it after you create or edit a listing to see what is left to fill. Photos can't be filled in chat, so they come back separately for a human to upload.",
+      inputSchema: { id: z.string().describe("Listing id.") },
+      annotations: { readOnlyHint: true },
+    },
+    ({ id }) =>
+      run(async () => {
+        const row = await catalog.getAdminExperienceById(id);
+        const categoryId = (row as { categoryId?: string | null }).categoryId ?? null;
+        const { categories } = await catalog.getCategories();
+        const category = categories.find((c) => c.id === categoryId);
+        if (!category) return { listing: { id: row.id, title: row.title }, category: null, note: "This listing has no category, so there is no layout to check. Put it in one with update_listing (categoryId)." };
+        const { fields, uploads } = fieldsForLayout(category.layout);
+        // Switches and defaults are not gaps: they have a sensible value already.
+        const optional = new Set(["content.taxes", "content.format", "content.walkIn", "content.bookVia", "content.bookLabel", "content.barText", "content.barNote", "content.links.book", "policy.showFinalTermsNote"]);
+        const missing = fields.filter((f) => !optional.has(f) && !isFilled(row, f));
+        const noPhotos: Record<string, boolean> = { "carousel photos": row.photos.length === 0, "menu pages": row.menuPages.length === 0, "story photos": !row.content?.storyPhotos?.length };
+        return {
+          listing: { id: row.id, title: row.title },
+          category: { id: category.id, name: category.name },
+          missing,
+          photosToUpload: uploads.filter((u) => noPhotos[u]),
+          review: `${adminUrl}/listings/${row.id}`,
+          note: missing.length ? "Fill what you can from the brief with update_listing. Don't invent facts." : "Every field this layout reads has something in it.",
+        };
       }),
   );
 

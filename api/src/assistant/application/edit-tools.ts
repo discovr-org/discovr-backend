@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import type { ExperiencePatch } from "../../catalog/domain/experience.js";
 import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
+import { parseMapsCoords } from "../domain/maps-link.js";
 import { defined, run } from "./tool-result.js";
 
 const id = z.string().describe("Id from list_listings or find_hosts.");
@@ -93,8 +94,11 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
       run(async () => {
         // The repo replaces content/schedule wholesale, so merge into what's there.
         const now = await catalog.getAdminExperienceById(id);
+        // A new map link moves the pin, unless coordinates were sent too.
+        const at = basics.placeLat === undefined && basics.placeLng === undefined ? parseMapsCoords(content?.links?.maps?.url ?? "") : null;
         const patch: ExperiencePatch = defined({
           ...basics,
+          ...(at ? { placeLat: at.lat, placeLng: at.lng } : {}),
           tags,
           policy,
           schedule: schedule && { ...now.schedule, ...defined(schedule) },

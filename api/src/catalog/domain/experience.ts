@@ -95,6 +95,8 @@ export type ExperienceContent = {
   /** trip = kayak/tour; venue = bar/restaurant (no trip times / people). */
   format?: "trip" | "venue";
   meetingPoint?: string;
+  /** Venues only: no booking needed. */
+  walkIn?: boolean;
   droppingPoint?: string;
   durationLabel?: string;
   additionalInfo?: string;
