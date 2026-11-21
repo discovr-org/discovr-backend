@@ -149,7 +149,7 @@ export type CategoryLayout = {
   /** Which buttons the Action buttons row shows, in order. Missing = the usual four. */
   actionButtons?: ActionButton[];
   /** Order and visibility of the page parts. */
-  sections?: Array<{ id: string; show?: boolean; space?: "none" | "large"; hide?: "mobile" | "desktop" }>;
+  sections?: Array<{ id: string; show?: boolean }>;
   /** The story, in order. Blocks name the listing field they fill. */
   story?: unknown[];
 };

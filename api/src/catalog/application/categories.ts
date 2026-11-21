@@ -22,16 +22,17 @@ export function cleanLayout(value: unknown): CategoryLayout {
   }
   if (Array.isArray(v.sections)) {
     layout.sections = v.sections
-      .filter((s): s is { id: string; show?: boolean; space?: unknown; hide?: unknown } => !!s && typeof (s as { id?: unknown }).id === "string")
-      .map((s) => ({
-        id: s.id,
-        ...(s.show === false ? { show: false } : {}),
-        ...(s.space === "none" || s.space === "large" ? { space: s.space } : {}),
-        ...(s.hide === "mobile" || s.hide === "desktop" ? { hide: s.hide } : {}),
-      }));
+      .filter((s): s is { id: string; show?: boolean } => !!s && typeof (s as { id?: unknown }).id === "string")
+      .map((s) => (s.show === false ? { id: s.id, show: false } : { id: s.id }));
   }
   if (Array.isArray(v.story)) {
-    layout.story = v.story.filter((b) => !!b && typeof b === "object" && typeof (b as { type?: unknown }).type === "string");
+    layout.story = v.story
+      .filter((b) => !!b && typeof b === "object" && typeof (b as { type?: unknown }).type === "string")
+      // The admin sets content, not styling: spacing and per-device hiding that older saves carry are dropped.
+      .map((b) => {
+        const { space: _space, hide: _hide, ...rest } = b as Record<string, unknown>;
+        return rest;
+      });
   }
   return layout;
 }

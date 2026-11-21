@@ -23,8 +23,6 @@ const flags = {
   size: z.enum(["full", "half"]).optional().describe("half: two half blocks in a row sit side by side."),
   show: z.boolean().optional().describe("false hides the block."),
   when: when.optional().describe("Show the block only if the listing has this field filled."),
-  space: z.enum(["none", "large"]).optional().describe("Space above: none sticks to the block above."),
-  hide: z.enum(["mobile", "desktop"]).optional().describe("Hide on phones or on desktop."),
 };
 
 export const layoutBlock = z.discriminatedUnion("type", [
@@ -46,8 +44,6 @@ export const layoutBlock = z.discriminatedUnion("type", [
 const section = z.object({
   id: z.enum([...PARTS, ...FIXED]),
   show: z.boolean().optional().describe("false hides the part."),
-  space: z.enum(["none", "large"]).optional(),
-  hide: z.enum(["mobile", "desktop"]).optional(),
 });
 
 export const layoutInput = {
@@ -62,12 +58,12 @@ export const layoutInput = {
 export const DEFAULT_PART_ORDER = PARTS;
 
 /** The page's part order as a guest sees it: the saved order with any missing part put back after the part before it. */
-export function effectiveSections(saved: unknown): Array<{ id: string; show: boolean; space?: string; hide?: string }> {
-  const list = Array.isArray(saved) ? (saved as Array<{ id?: unknown; show?: unknown; space?: unknown; hide?: unknown }>) : [];
+export function effectiveSections(saved: unknown): Array<{ id: string; show: boolean }> {
+  const list = Array.isArray(saved) ? (saved as Array<{ id?: unknown; show?: unknown }>) : [];
   const known = new Set<string>(PARTS);
   const out = list
     .filter((s, i) => typeof s.id === "string" && known.has(s.id) && list.findIndex((x) => x.id === s.id) === i)
-    .map((s) => ({ id: s.id as string, show: s.show !== false, ...(typeof s.space === "string" ? { space: s.space } : {}), ...(typeof s.hide === "string" ? { hide: s.hide } : {}) }));
+    .map((s) => ({ id: s.id as string, show: s.show !== false }));
   for (const id of PARTS) {
     if (out.some((s) => s.id === id)) continue;
     const prev = PARTS[PARTS.indexOf(id) - 1];
@@ -107,7 +103,7 @@ export const LAYOUT_GUIDE = {
     packages: "packages",
     photos: PHOTO_SOURCES,
   },
-  flags: "Every block can also take: size (full|half), show (false hides), when (show only if this field is filled), space (none|large), hide (mobile|desktop).",
+  flags: "Every block can also take: size (full|half), show (false hides), when (show only if this field is filled). There are no styling options: the layout sets content and order only.",
   tips: [
     "Start from an existing layout: read list_category_layouts and copy the one closest to what the user wants.",
     "A story usually starts with a heading from `title`, a divider, a quote from `pitch`, a text block from `about`, then facts, then FAQs.",
