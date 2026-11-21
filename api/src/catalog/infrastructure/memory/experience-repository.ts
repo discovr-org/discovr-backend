@@ -182,6 +182,7 @@ export class MemoryExperienceRepository
       .map((e) => {
         const custom = this.covers.get(e.id);
         const cover = custom ? { src: custom.url, alt: custom.alt } : e.photos[0];
+        const category = this.categories.get(this.categoryOf.get(e.id) ?? "");
         return {
           slug: e.slug,
           title: e.title,
@@ -193,6 +194,7 @@ export class MemoryExperienceRepository
           blurb: e.verdict || undefined,
           durationMinutes: e.durationMinutes || undefined,
           format: e.content?.format,
+          ...(category ? { categoryName: category.name, categorySlug: category.slug } : {}),
         };
       });
   }

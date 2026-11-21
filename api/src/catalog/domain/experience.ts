@@ -372,5 +372,8 @@ export type ListingCard = {
   blurb?: string;
   /** trip = runs on a schedule; venue = bar or restaurant you walk into. */
   format?: "trip" | "venue";
+  /** The category (page layout) the listing is in, if any. The guest Type filter is made from these. */
+  categoryName?: string;
+  categorySlug?: string;
 };
 

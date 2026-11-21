@@ -105,6 +105,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         verdict,
         format:content->>format,
         host:hosts(active),
+        category:categories(slug, name),
         photos:experience_photos(src, alt, sort_order, is_cover)
       `,
       )
@@ -731,6 +732,7 @@ function bySortOrder(rows: unknown): DbRow[] {
 }
 
 function mapListingCard(row: DbRow): ListingCard {
+  const category = row.category as { slug?: string; name?: string } | null;
   const minutes = Number(row.duration_minutes);
   const photos = bySortOrder(row.photos);
   const photo = photos.find((p) => p.is_cover) ?? photos[0];
@@ -747,5 +749,6 @@ function mapListingCard(row: DbRow): ListingCard {
     blurb: String(row.verdict || row.about || "") || undefined,
     durationMinutes: minutes > 0 ? minutes : undefined,
     format: row.format === "venue" || row.format === "trip" ? row.format : undefined,
+    ...(category?.name ? { categoryName: String(category.name), categorySlug: String(category.slug ?? "") } : {}),
   };
 }
