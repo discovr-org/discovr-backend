@@ -130,6 +130,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         cover_photo_url,
         photos:experience_photos(id),
         host_id,
+        category_id,
         host:hosts(business_name, active)
       `,
       )
@@ -151,6 +152,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         hostId: row.host_id ? String(row.host_id) : null,
         hostBusinessName: String(host?.business_name ?? ""),
         hostActive: host?.active !== false,
+        categoryId: row.category_id ? String(row.category_id) : null,
         placeNeighborhood: String(row.place_neighborhood ?? ""),
         hasPhoto:
           Boolean(row.cover_photo_url) ||

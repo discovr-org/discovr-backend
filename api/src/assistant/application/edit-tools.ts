@@ -9,6 +9,7 @@ const id = z.string().describe("Id from list_listings or find_hosts.");
 const editable = {
   ...z.object(listingBasics).omit({ hostId: true }).partial().shape,
   hostId: z.string().nullable().optional().describe("Host id, or null to remove the host."),
+  categoryId: z.string().nullable().optional().describe("Category id, or null to give the listing its own layout."),
 };
 
 /**
@@ -84,7 +85,7 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
     "update_listing",
     {
       description:
-        "Change fields on a listing. Send only what changes. Lists (faqs, included, carry, tags...) replace the old list, so send the full list. Can change the host (hostId, or null for none) and the category (categoryId). Can't change status or slug.",
+        "Change fields on a listing. Send only what changes. Lists (faqs, included, carry, tags...) replace the old list, so send the full list. Can change the host (hostId, or null for none) and the category (categoryId, or null for its own layout). Can't change status or slug.",
       inputSchema: { id, ...editable, ...listingExtras },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },

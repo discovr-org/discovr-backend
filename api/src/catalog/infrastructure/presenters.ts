@@ -61,6 +61,7 @@ export function presentExperienceSummaries(rows: ExperienceSummary[]) {
       hostId: r.hostId,
       hostBusinessName: r.hostBusinessName,
       hostActive: r.hostActive,
+      categoryId: r.categoryId,
       placeNeighborhood: r.placeNeighborhood,
       hasPhoto: r.hasPhoto,
     })),

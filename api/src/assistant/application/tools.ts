@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
+import { registerCategoryTools } from "./category-tools.js";
 import { registerEditTools } from "./edit-tools.js";
 import type { PlaceFinder } from "./ports/place-finder.js";
 import { run } from "./tool-result.js";
@@ -17,6 +18,7 @@ export function registerTools(
   adminUrl: string,
 ) {
   registerEditTools(server, catalog, adminUrl);
+  registerCategoryTools(server, catalog, adminUrl);
 
   server.registerTool(
     "find_place",
@@ -66,7 +68,7 @@ export function registerTools(
     "list_categories",
     {
       description:
-        "Page layouts a listing can join, like Sundowners or Surfing. Pick the one that fits and pass its id as categoryId when you create the listing. A category fixes the page layout; the listing only fills in its content. If none fits, ask the user.",
+        "A short list of the page layouts a listing can join, like Sundowners or Surfing (for the full stored layouts use list_category_layouts). Pick the one that fits and pass its id as categoryId when you create the listing. A category fixes the page layout; the listing only fills in its content. If none fits, ask the user.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },

@@ -211,6 +211,7 @@ export class MemoryExperienceRepository
         hostId,
         hostBusinessName: host?.businessName ?? e.host?.businessName ?? "",
         hostActive: host?.active ?? true,
+        categoryId: this.categoryOf.get(e.id) ?? null,
         placeNeighborhood: e.place.neighborhood,
         hasPhoto: e.photos.length > 0 || this.covers.has(e.id),
       };
