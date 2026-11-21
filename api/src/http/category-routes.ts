@@ -60,6 +60,14 @@ export function registerCategoryRoutes(app: FastifyInstance, catalog: CatalogSer
     }
   });
 
+  app.post<{ Params: { id: string }; Body: { layout?: unknown } }>("/v1/admin/categories/:id/preview", async (req, reply) => {
+    try {
+      return reply.send(await catalog.previewCategorySample(req.params.id, req.body?.layout));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
   app.get<{ Params: { id: string } }>("/v1/admin/categories/:id", async (req, reply) => {
     try {
       return reply.send(await catalog.getCategoryById(req.params.id));

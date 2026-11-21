@@ -123,6 +123,7 @@ export type ExperienceContent = {
   /** Process steps and price rows, read by category layouts. */
   steps?: Array<{ marker?: string; title: string; caption?: string }>;
   packages?: Array<{ name: string; price: string; detail?: string }>;
+  storyPhotos?: Array<{ src: string; alt?: string; caption?: string }>;
   /** Which buttons the Action buttons row shows, in order. Missing = Call, Directions, Instagram, Share. */
   actionButtons?: ActionButton[];
   /** "link" = booking opens `links.book`; otherwise guests call the host. */

@@ -5,6 +5,7 @@ import { DeleteHost } from "../application/delete-host.js";
 import { GetAdminExperience } from "../application/get-admin-experience.js";
 import { Categories, cleanLayout } from "../application/categories.js";
 import { HomeFeed } from "../application/home-feed.js";
+import { sampleExperience } from "../domain/sample-experience.js";
 import { SiteSettingsStore } from "../application/site-settings.js";
 import { PreviewExperience } from "../application/preview-experience.js";
 import { GetExperience } from "../application/get-experience.js";
@@ -161,6 +162,16 @@ export class CatalogService {
 
   async saveHomeFeed(sections: unknown) {
     return { sections: await this.homeFeed.save(sections) };
+  }
+
+  /**
+   * A category's page drawn on a made-up listing with every field filled. `layout` shows an unsaved layout,
+   * so the editor's preview works before any real listing uses the category. Nothing is stored.
+   */
+  async previewCategorySample(categoryId: string, layout?: unknown) {
+    const category = await this.categories.get(categoryId);
+    const shown = layout === undefined ? category.layout : cleanLayout(layout);
+    return presentExperience({ ...sampleExperience(), category: { slug: category.slug, name: category.name, layout: shown } });
   }
 
   async getCategories() {
