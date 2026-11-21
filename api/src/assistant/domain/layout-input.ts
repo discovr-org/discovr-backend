@@ -20,7 +20,6 @@ const lines = z.enum(LINES_SOURCES);
 const when = z.enum([...TEXT_SOURCES, ...LINES_SOURCES, "faqs", "steps", "packages"]);
 
 const flags = {
-  size: z.enum(["full", "half"]).optional().describe("half: two half blocks in a row sit side by side."),
   show: z.boolean().optional().describe("false hides the block."),
   when: when.optional().describe("Show the block only if the listing has this field filled."),
 };
@@ -103,7 +102,7 @@ export const LAYOUT_GUIDE = {
     packages: "packages",
     photos: PHOTO_SOURCES,
   },
-  flags: "Every block can also take: size (full|half), show (false hides), when (show only if this field is filled). There are no styling options: the layout sets content and order only.",
+  flags: "Every block can also take: show (false hides), when (show only if this field is filled). There are no styling options: the layout sets content and order only.",
   tips: [
     "Start from an existing layout: read list_category_layouts and copy the one closest to what the user wants.",
     "A story usually starts with a heading from `title`, a divider, a quote from `pitch`, a text block from `about`, then facts, then FAQs.",

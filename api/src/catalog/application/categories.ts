@@ -28,9 +28,9 @@ export function cleanLayout(value: unknown): CategoryLayout {
   if (Array.isArray(v.story)) {
     layout.story = v.story
       .filter((b) => !!b && typeof b === "object" && typeof (b as { type?: unknown }).type === "string")
-      // The admin sets content, not styling: spacing and per-device hiding that older saves carry are dropped.
+      // The admin sets content, not styling: spacing, per-device hiding and widths that older saves carry are dropped.
       .map((b) => {
-        const { space: _space, hide: _hide, ...rest } = b as Record<string, unknown>;
+        const { space: _space, hide: _hide, size: _size, ...rest } = b as Record<string, unknown>;
         return rest;
       });
   }
