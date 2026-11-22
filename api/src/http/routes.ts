@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./auth-routes.js";
 import { registerCategoryRoutes, registerHomeFeedRoutes, registerSiteSettingsRoutes } from "./category-routes.js";
 import { registerMcpRoutes } from "./mcp-routes.js";
 import { registerUserRoutes } from "./user-routes.js";
+import { limit } from "./rate-limits.js";
 import { sendApiError } from "./send-error.js";
 
 export type HttpDeps = {
@@ -33,6 +34,12 @@ export type HttpDeps = {
 export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
   // First, so its gate runs before every other /v1/admin route.
   registerAdminRoutes(app, deps);
+
+  // The guest app calls this when it opens; it sends any welcome WhatsApps that are due.
+  app.post("/v1/welcome/run", limit(30, "1 minute"), async (_req, reply) => {
+    void deps.communication.runWelcomeJobs((id) => deps.users.getById(id).then((u) => u.name, () => null));
+    return reply.code(204).send();
+  });
 
   app.get("/health", async () => ({ ok: true, service: "api" }));
 

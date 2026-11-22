@@ -51,9 +51,9 @@ export class CommunicationService {
     await this.welcome?.enqueue(userId, phoneE164);
   }
 
-  /** Start the background sender. `nameOf` gives a user's first name, or null. */
-  startWelcomeWorker(nameOf: (userId: string) => Promise<string | null>) {
-    this.welcome?.start(nameOf);
+  /** Send any welcomes that are due. `nameOf` gives a user's first name, or null. */
+  async runWelcomeJobs(nameOf: (userId: string) => Promise<string | null>) {
+    await this.welcome?.tick(nameOf);
   }
 
   async sendSmsMessage(input: { toE164: string; body: string }) {

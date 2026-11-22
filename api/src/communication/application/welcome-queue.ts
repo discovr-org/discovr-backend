@@ -6,10 +6,11 @@ import type { WhatsAppSender } from "./ports/whatsapp-sender.js";
 const DELAY_MS = 2 * 60 * 1000; // time to type a name
 const RETRY_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 4; // first try + 3 retries
-const EVERY_MS = 30 * 1000;
+const MIN_GAP_MS = 20 * 1000; // app opens can be many; check the table at most this often
 
 export class WelcomeQueue {
   private busy = false;
+  private lastRun = 0;
 
   constructor(
     private readonly jobs: WelcomeJobRepository,
@@ -22,14 +23,11 @@ export class WelcomeQueue {
     return this.jobs.enqueue(userId, phoneE164, new Date(Date.now() + DELAY_MS));
   }
 
-  /** Checks for due jobs every 30 s. `nameOf` gives the first name, or null. */
-  start(nameOf: (userId: string) => Promise<string | null>) {
-    setInterval(() => void this.tick(nameOf), EVERY_MS).unref();
-  }
-
+  /** Sends every due welcome. `nameOf` gives the first name, or null. Cheap to call often. */
   async tick(nameOf: (userId: string) => Promise<string | null>) {
-    if (this.busy) return;
+    if (this.busy || Date.now() - this.lastRun < MIN_GAP_MS) return;
     this.busy = true;
+    this.lastRun = Date.now();
     try {
       for (const job of await this.jobs.claimDue(new Date(), 20, RETRY_MS)) {
         const name = (await nameOf(job.userId).catch(() => null)) || "there";

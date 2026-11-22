@@ -79,7 +79,6 @@ async function main() {
   const messageLog = authSource === "memory" || !db ? new MemoryMessageLogRepository() : new SupabaseMessageLogRepository(db);
   const welcomeJobs = authSource === "memory" || !db ? new MemoryWelcomeJobRepository() : new SupabaseWelcomeJobRepository(db);
   const communication = new CommunicationService(createSmsSender(config), whatsapp, messageLog, welcomeJobs, config.botspaceWelcomeTemplateId);
-  communication.startWelcomeWorker((id) => users.getById(id).then((u) => u.name, () => null));
   const { otps, sessions, handoffs } = createAuthStores(authSource, db);
   const auth = new AuthService(otps, sessions, handoffs, users, communication, config.supabaseSecretKey ?? randomBytes(32).toString("hex"));
 
