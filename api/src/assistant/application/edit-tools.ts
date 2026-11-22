@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
 import type { ExperiencePatch } from "../../catalog/domain/experience.js";
+import { editVector, lexemes } from "../../catalog/domain/search-vector.js";
 import { listingBasics, listingExtras, toContent } from "../domain/listing-input.js";
 import { parseMapsCoords } from "../domain/maps-link.js";
 import { defined, run } from "./tool-result.js";
@@ -110,6 +111,41 @@ export function registerEditTools(server: McpServer, catalog: CatalogService, ad
         });
         const saved = await catalog.patchExperience(id, patch);
         return { id: saved.id, status: saved.status, review: `${adminUrl}/listings/${saved.id}` };
+      }),
+  );
+
+  server.registerTool(
+    "get_search_vector",
+    {
+      description:
+        "The words guest search matches for a listing (its stored search vector). Title, neighborhood and verdict start in it; you can add more.",
+      inputSchema: { id },
+      annotations: { readOnlyHint: true },
+    },
+    ({ id }) =>
+      run(async () => {
+        const vector = await catalog.getSearchVector(id);
+        return { words: lexemes(vector), vector };
+      }),
+  );
+
+  server.registerTool(
+    "update_search_vector",
+    {
+      description:
+        "Change the words guest search matches for a listing. 'add' keeps the old words and adds yours, 'remove' takes yours out, 'replace' swaps everything. Words are lowercased and split on spaces; give base-form words (beach, not beaches). Editing the title, neighborhood or verdict later rebuilds the vector and drops added words, so re-add them after such edits.",
+      inputSchema: {
+        id,
+        mode: z.enum(["add", "remove", "replace"]),
+        terms: z.array(z.string()).describe("Words or short phrases, e.g. ['sunset', 'beach bar', 'nightlife']."),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    ({ id, mode, terms }) =>
+      run(async () => {
+        const next = editVector(mode === "replace" ? "" : await catalog.getSearchVector(id), mode, terms);
+        const vector = await catalog.setSearchVector(id, next);
+        return { words: lexemes(vector), vector };
       }),
   );
 

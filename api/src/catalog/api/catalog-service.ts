@@ -32,7 +32,7 @@ import type {
   HostCreate,
   HostPatch,
 } from "../domain/experience.js";
-import { ValidationError } from "../domain/errors.js";
+import { NotFoundError, ValidationError } from "../domain/errors.js";
 import {
   presentCategories,
   presentCategory,
@@ -71,7 +71,7 @@ export class CatalogService {
   private readonly uploadHostAvatar: UploadHostAvatar | null;
 
   constructor(
-    repo: ExperienceRepository,
+    private readonly repo: ExperienceRepository,
     media: ExperienceMediaRepository,
     images: ImageUploader | null = null,
   ) {
@@ -203,6 +203,19 @@ export class CatalogService {
     const row = await this.createExperience.execute(input);
     this.invalidateLists();
     return presentExperienceAdmin(row);
+  }
+
+  async getSearchVector(id: string) {
+    const vector = await this.repo.getSearchVector(id);
+    if (vector === null) throw new NotFoundError(`Experience ${id} not found`);
+    return vector;
+  }
+
+  async setSearchVector(id: string, vector: string) {
+    const saved = await this.repo.setSearchVector(id, vector);
+    if (saved === null) throw new NotFoundError(`Experience ${id} not found`);
+    this.invalidateLists(); // cards carry the search words
+    return saved;
   }
 
   async patchExperience(id: string, patch: ExperiencePatch) {

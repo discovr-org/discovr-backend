@@ -44,6 +44,9 @@ export interface ExperienceRepository {
   createExperience(input: ExperienceCreate): Promise<ExperienceAdmin>;
   updateExperience(id: string, patch: ExperiencePatch): Promise<ExperienceAdmin>;
   deleteExperience(id: string): Promise<void>;
+  /** The stored tsvector as text (`'word':1B ...`). `null` if no such listing. */
+  getSearchVector(id: string): Promise<string | null>;
+  setSearchVector(id: string, vector: string): Promise<string | null>;
   createHost(input: HostCreate): Promise<HostSummary>;
   updateHost(id: string, patch: HostPatch): Promise<HostSummary>;
   deleteHost(id: string): Promise<void>;

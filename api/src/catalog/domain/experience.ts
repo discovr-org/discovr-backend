@@ -372,6 +372,8 @@ export type ListingCard = {
   priceAsk?: boolean;
   durationMinutes?: number;
   blurb?: string;
+  /** Words from the listing's search_vector, space-separated. Guest search matches these too. */
+  searchWords?: string;
   /** trip = runs on a schedule; venue = bar or restaurant you walk into. */
   format?: "trip" | "venue";
   /** The category (page layout) the listing is in, if any. The guest Type filter is made from these. */

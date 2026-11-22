@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExperienceRepository } from "../../application/ports/experience-repository.js";
 import { ValidationError } from "../../../shared/errors.js";
+import { lexemes } from "../../domain/search-vector.js";
 import type {
   Category,
   HomeSection,
@@ -104,6 +105,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         duration_minutes,
         about,
         verdict,
+        search_vector,
         format:content->>format,
         host:hosts(active),
         category:categories(slug, name${weightColumn}),
@@ -425,6 +427,24 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     const updated = await this.getAdminById(id);
     if (!updated) throw new Error(`Experience ${id} not found`);
     return updated;
+  }
+
+  async getSearchVector(id: string) {
+    const { data, error } = await this.db.from("experiences").select("search_vector").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data && String(data.search_vector ?? "");
+  }
+
+  /** Writes the tsvector as text; Postgres parses it. A later title/neighborhood/verdict edit rebuilds it (trigger). */
+  async setSearchVector(id: string, vector: string) {
+    const { data, error } = await this.db
+      .from("experiences")
+      .update({ search_vector: vector })
+      .eq("id", id)
+      .select("search_vector")
+      .maybeSingle();
+    if (error) throw error;
+    return data && String(data.search_vector ?? "");
   }
 
   async deleteExperience(id: string): Promise<void> {
@@ -753,6 +773,7 @@ function mapListingCard(row: DbRow): ListingCard {
     priceInr: row.price_ask ? undefined : Number(row.price_from_inr),
     priceAsk: Boolean(row.price_ask) || undefined,
     blurb: String(row.verdict || row.about || "") || undefined,
+    searchWords: lexemes(String(row.search_vector ?? "")).join(" ") || undefined,
     durationMinutes: minutes > 0 ? minutes : undefined,
     format: row.format === "venue" || row.format === "trip" ? row.format : undefined,
     ...(category?.name ? { categoryName: String(category.name), categorySlug: String(category.slug ?? ""), categoryWeight: Number(category.weight ?? 1) } : {}),

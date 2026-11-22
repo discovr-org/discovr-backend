@@ -52,6 +52,7 @@ export class MemoryExperienceRepository
   private readonly mediaIds = new WeakMap<object, string>();
   private readonly coverIds = new Map<string, string>();
   private readonly statuses = new Map<string, ExperienceStatus>();
+  private readonly searchVectors = new Map<string, string>();
   private readonly categories = new Map<string, Category>();
   private readonly categoryOf = new Map<string, string>();
   private readonly groupSizeMax = new Map<string, number>();
@@ -357,6 +358,16 @@ export class MemoryExperienceRepository
     }
 
     return this.toAdmin(e);
+  }
+
+  async getSearchVector(id: string) {
+    return this.experiences.some((x) => x.id === id) ? (this.searchVectors.get(id) ?? "") : null;
+  }
+
+  async setSearchVector(id: string, vector: string) {
+    if (!this.experiences.some((x) => x.id === id)) return null;
+    this.searchVectors.set(id, vector);
+    return vector;
   }
 
   async deleteExperience(id: string): Promise<void> {
