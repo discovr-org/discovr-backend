@@ -89,10 +89,11 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
   }
 
   async listCards(): Promise<ListingCard[]> {
-    const { data, error } = await this.db
-      .from("experiences")
-      .select(
-        `
+    const read = (weightColumn: string) =>
+      this.db
+        .from("experiences")
+        .select(
+          `
         slug,
         title,
         place_neighborhood,
@@ -105,13 +106,16 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         verdict,
         format:content->>format,
         host:hosts(active),
-        category:categories(slug, name, weight),
+        category:categories(slug, name${weightColumn}),
         photos:experience_photos(src, alt, sort_order, is_cover)
       `,
-      )
-      .eq("status", "published");
+        )
+        .eq("status", "published");
+    let { data, error } = await read(", weight");
+    // Before migration 026 there is no weight column. The home page must not go empty over it: read without, every weight counts as 1.
+    if (error?.code === "42703") ({ data, error } = await read(""));
     if (error) throw error;
-    return ((data ?? []) as DbRow[])
+    return ((data ?? []) as unknown as DbRow[])
       .filter((row) => (row.host as { active?: boolean } | null)?.active !== false)
       .map(mapListingCard);
   }
@@ -357,7 +361,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
   }
 
   async createCategory(input: { name: string; slug: string; layout: CategoryLayout; weight?: number }): Promise<Category> {
-    const { data, error } = await this.db.from("categories").insert({ name: input.name, slug: input.slug, layout: input.layout, weight: input.weight ?? 1 }).select("*").single();
+    const { data, error } = await this.db.from("categories").insert({ name: input.name, slug: input.slug, layout: input.layout, ...(input.weight !== undefined ? { weight: input.weight } : {}) }).select("*").single();
     if (error) {
       if (error.code === "23505") throw new ValidationError("That slug is taken.");
       throw error;
