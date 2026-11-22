@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CatalogService } from "../../catalog/api/catalog-service.js";
+import { finalOrder, MAX_WEIGHT, MIN_WEIGHT, orderCategories, weightsForOrder } from "../domain/category-order.js";
 import { fieldsForLayout, isFilled } from "../domain/layout-fields.js";
 import { effectiveSections, fixedShown, LAYOUT_GUIDE, layoutInput } from "../domain/layout-input.js";
 import { defined, run } from "./tool-result.js";
@@ -34,7 +35,9 @@ export function registerCategoryTools(server: McpServer, catalog: CatalogService
     },
     ({ id }) =>
       run(async () => {
-        const [{ categories }, { experiences }] = await Promise.all([catalog.getCategories(), catalog.getExperiences()]);
+        const [{ categories }, { experiences }, feed] = await Promise.all([catalog.getCategories(), catalog.getExperiences(), catalog.getHomeFeed()]);
+        // Where each row sits on the guest home page: 1 = first.
+        const position = new Map(orderCategories(categories, feed.sections ?? []).map((c, i) => [c.id, i + 1]));
         const rows = categories
           .filter((c) => !id || c.id === id)
           .map((c) => ({
@@ -44,6 +47,7 @@ export function registerCategoryTools(server: McpServer, catalog: CatalogService
             listingCount: c.listingCount ?? 0,
             /** Order of its row on the guest home page: 1 to 1000, higher is higher up. Set in the admin. */
             weight: c.weight,
+            homeOrder: position.get(c.id),
             review: `${adminUrl}/categories/${c.id}`,
             layout: {
               pageOrder: effectiveSections(c.layout.sections),
@@ -88,6 +92,41 @@ export function registerCategoryTools(server: McpServer, catalog: CatalogService
           review: `${adminUrl}/listings/${row.id}`,
           note: missing.length ? "Fill what you can from the brief with update_listing. Don't invent facts." : "Every field this layout reads has something in it.",
         };
+      }),
+  );
+
+  server.registerTool(
+    "reorder_categories",
+    {
+      description:
+        "Change the order of the category rows on the guest home page. Pass category ids in the order you want, first = top. Ids you leave out keep their current order below the ones you list, so \"put Surfing first\" is just [surfingId]. This sets every weight to a different number from 1000 down. Changes the live home page; only call it when the user asked to reorder. Read the current order with list_category_layouts (homeOrder).",
+      inputSchema: { order: z.array(z.string()).min(1).describe("Category ids, top first.") },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    ({ order }) =>
+      run(async () => {
+        const [{ categories }, feed] = await Promise.all([catalog.getCategories(), catalog.getHomeFeed()]);
+        const final = finalOrder(orderCategories(categories, feed.sections ?? []), order);
+        const weights = weightsForOrder(final.map((c) => c.id));
+        await catalog.setCategoryWeights(weights);
+        return {
+          order: final.map((c, i) => ({ position: i + 1, id: c.id, name: c.name, weight: weights[i].weight })),
+          note: "The home page shows rows in this order (the cards list is cached for about a minute).",
+        };
+      }),
+  );
+
+  server.registerTool(
+    "set_category_weight",
+    {
+      description: `Set one category's weight, ${MIN_WEIGHT} to ${MAX_WEIGHT}. A higher weight puts its row higher on the guest home page; the default is 1 and equal weights keep the Home feed's order. To move a category to a place in the order, use reorder_categories instead. Changes the live home page; only call it when the user asked.`,
+      inputSchema: { id: z.string().describe("Category id from list_category_layouts."), weight: z.number().int().min(MIN_WEIGHT).max(MAX_WEIGHT) },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    ({ id, weight }) =>
+      run(async () => {
+        const saved = await catalog.patchCategory(id, { weight });
+        return { id: saved.id, name: saved.name, weight: saved.weight, note: "Read the new order with list_category_layouts (homeOrder)." };
       }),
   );
 
