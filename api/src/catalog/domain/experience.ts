@@ -162,6 +162,8 @@ export type Category = {
   slug: string;
   name: string;
   layout: CategoryLayout;
+  /** Order of its row on the guest home page, 1 to 1000. Higher = higher up. Default 1. */
+  weight: number;
   /** How many listings use it. Filled in by the list. */
   listingCount?: number;
 };
@@ -177,7 +179,7 @@ export type SiteSettings = {
 /** One section of the guest home page: a title, how it draws, and which listings (by slug) in order. */
 export type HomeSection = { id: string; title: string; layout: "rail" | "stack"; slugs: string[] };
 
-export type CategoryInput = { name?: string; slug?: string; layout?: CategoryLayout };
+export type CategoryInput = { name?: string; slug?: string; layout?: CategoryLayout; weight?: number };
 
 export type Experience = {
   id: string;
@@ -375,5 +377,7 @@ export type ListingCard = {
   /** The category (page layout) the listing is in, if any. The guest Type filter is made from these. */
   categoryName?: string;
   categorySlug?: string;
+  /** The category's weight, so the home page can order its rows. */
+  categoryWeight?: number;
 };
 

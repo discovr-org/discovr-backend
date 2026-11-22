@@ -105,7 +105,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
         verdict,
         format:content->>format,
         host:hosts(active),
-        category:categories(slug, name),
+        category:categories(slug, name, weight),
         photos:experience_photos(src, alt, sort_order, is_cover)
       `,
       )
@@ -356,8 +356,8 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     return this.categoryById(id);
   }
 
-  async createCategory(input: { name: string; slug: string; layout: CategoryLayout }): Promise<Category> {
-    const { data, error } = await this.db.from("categories").insert({ name: input.name, slug: input.slug, layout: input.layout }).select("*").single();
+  async createCategory(input: { name: string; slug: string; layout: CategoryLayout; weight?: number }): Promise<Category> {
+    const { data, error } = await this.db.from("categories").insert({ name: input.name, slug: input.slug, layout: input.layout, weight: input.weight ?? 1 }).select("*").single();
     if (error) {
       if (error.code === "23505") throw new ValidationError("That slug is taken.");
       throw error;
@@ -370,6 +370,7 @@ export class SupabaseExperienceRepository implements ExperienceRepository {
     if (input.name !== undefined) payload.name = input.name;
     if (input.slug !== undefined) payload.slug = input.slug;
     if (input.layout !== undefined) payload.layout = input.layout;
+    if (input.weight !== undefined) payload.weight = input.weight;
     const { data, error } = await this.db.from("categories").update(payload).eq("id", id).select("*").maybeSingle();
     if (error) {
       if (error.code === "23505") throw new ValidationError("That slug is taken.");
@@ -530,6 +531,7 @@ function mapCategory(row: DbRow): Category {
     slug: String(row.slug),
     name: String(row.name),
     layout: ((row.layout as CategoryLayout | null) ?? {}) as CategoryLayout,
+    weight: Number(row.weight ?? 1),
   };
 }
 
@@ -732,7 +734,7 @@ function bySortOrder(rows: unknown): DbRow[] {
 }
 
 function mapListingCard(row: DbRow): ListingCard {
-  const category = row.category as { slug?: string; name?: string } | null;
+  const category = row.category as { slug?: string; name?: string; weight?: number } | null;
   const minutes = Number(row.duration_minutes);
   const photos = bySortOrder(row.photos);
   const photo = photos.find((p) => p.is_cover) ?? photos[0];
@@ -749,6 +751,6 @@ function mapListingCard(row: DbRow): ListingCard {
     blurb: String(row.verdict || row.about || "") || undefined,
     durationMinutes: minutes > 0 ? minutes : undefined,
     format: row.format === "venue" || row.format === "trip" ? row.format : undefined,
-    ...(category?.name ? { categoryName: String(category.name), categorySlug: String(category.slug ?? "") } : {}),
+    ...(category?.name ? { categoryName: String(category.name), categorySlug: String(category.slug ?? ""), categoryWeight: Number(category.weight ?? 1) } : {}),
   };
 }

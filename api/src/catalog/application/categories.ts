@@ -37,7 +37,18 @@ export function cleanLayout(value: unknown): CategoryLayout {
   return layout;
 }
 
-/** Categories: a name, a slug, and the page layout every listing in it shares. */
+const MIN_WEIGHT = 1;
+const MAX_WEIGHT = 1000;
+
+/** A weight is a whole number from 1 to 1000. Anything else is refused, not rounded, so the admin sees the mistake. */
+export function cleanWeight(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < MIN_WEIGHT || value > MAX_WEIGHT) {
+    throw new ValidationError(`A weight is a whole number from ${MIN_WEIGHT} to ${MAX_WEIGHT}.`);
+  }
+  return value;
+}
+
+/** Categories: a name, a slug, the page layout every listing in it shares, and the weight that orders its home row. */
 export class Categories {
   constructor(private readonly repo: ExperienceRepository) {}
 
@@ -51,14 +62,14 @@ export class Categories {
     return c;
   }
 
-  async create(input: { name?: unknown; slug?: unknown; layout?: unknown }): Promise<Category> {
+  async create(input: { name?: unknown; slug?: unknown; layout?: unknown; weight?: unknown }): Promise<Category> {
     const name = typeof input.name === "string" ? input.name.trim() : "";
     if (!name) throw new ValidationError("Give the category a name.");
     const slug = (typeof input.slug === "string" && input.slug.trim() ? slugOf(input.slug) : slugOf(name)) || "category";
-    return this.repo.createCategory({ name, slug, layout: cleanLayout(input.layout) });
+    return this.repo.createCategory({ name, slug, layout: cleanLayout(input.layout), weight: input.weight === undefined ? 1 : cleanWeight(input.weight) });
   }
 
-  async update(id: string, input: { name?: unknown; slug?: unknown; layout?: unknown }): Promise<Category> {
+  async update(id: string, input: { name?: unknown; slug?: unknown; layout?: unknown; weight?: unknown }): Promise<Category> {
     const patch: CategoryInput = {};
     if (typeof input.name === "string") {
       if (!input.name.trim()) throw new ValidationError("A category needs a name.");
@@ -70,9 +81,26 @@ export class Categories {
       patch.slug = slug;
     }
     if (input.layout !== undefined) patch.layout = cleanLayout(input.layout);
+    if (input.weight !== undefined) patch.weight = cleanWeight(input.weight);
     if (Object.keys(patch).length === 0) throw new ValidationError("Nothing to update.");
     await this.get(id);
     return this.repo.updateCategory(id, patch);
+  }
+
+  /**
+   * Set many weights at once (a drag renumbers several). Every id and weight is checked before anything is written.
+   * Not atomic: the database is written one category at a time.
+   */
+  async setWeights(items: unknown): Promise<Category[]> {
+    if (!Array.isArray(items) || items.length === 0) throw new ValidationError("Send a list of { id, weight }.");
+    const known = new Set((await this.repo.listCategories()).map((c) => c.id));
+    const clean = items.map((raw) => {
+      const item = raw as { id?: unknown; weight?: unknown } | null;
+      if (typeof item?.id !== "string" || !known.has(item.id)) throw new NotFoundError(`Category ${String(item?.id)} not found`);
+      return { id: item.id, weight: cleanWeight(item.weight) };
+    });
+    for (const { id, weight } of clean) await this.repo.updateCategory(id, { weight });
+    return this.repo.listCategories();
   }
 
   async remove(id: string): Promise<void> {

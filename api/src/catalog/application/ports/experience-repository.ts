@@ -33,7 +33,7 @@ export interface ExperienceRepository {
   saveHomeFeed(sections: HomeSection[]): Promise<HomeSection[]>;
   listCategories(): Promise<Category[]>;
   getCategory(id: string): Promise<Category | null>;
-  createCategory(input: Required<Pick<CategoryInput, "name" | "slug">> & { layout: CategoryLayout }): Promise<Category>;
+  createCategory(input: Required<Pick<CategoryInput, "name" | "slug">> & { layout: CategoryLayout; weight?: number }): Promise<Category>;
   updateCategory(id: string, input: CategoryInput): Promise<Category>;
   /** Fails with a ValidationError-style message when listings still use it. */
   deleteCategory(id: string): Promise<void>;

@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { CatalogService } from "../catalog/api/catalog-service.js";
 import { sendApiError } from "./send-error.js";
 
-type Body = { name?: unknown; slug?: unknown; layout?: unknown };
+type Body = { name?: unknown; slug?: unknown; layout?: unknown; weight?: unknown };
 
 /** Site settings: public read, admin save. */
 export function registerSiteSettingsRoutes(app: FastifyInstance, catalog: CatalogService) {
@@ -55,6 +55,15 @@ export function registerCategoryRoutes(app: FastifyInstance, catalog: CatalogSer
   app.post<{ Body: Body }>("/v1/admin/categories", async (req, reply) => {
     try {
       return reply.status(201).send(await catalog.addCategory(req.body ?? {}));
+    } catch (err) {
+      return sendApiError(reply, err);
+    }
+  });
+
+  // Several weights at once: dragging a row in the admin renumbers more than one category.
+  app.put<{ Body: { weights?: unknown } }>("/v1/admin/categories/weights", async (req, reply) => {
+    try {
+      return reply.send(await catalog.setCategoryWeights(req.body?.weights));
     } catch (err) {
       return sendApiError(reply, err);
     }

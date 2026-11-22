@@ -38,7 +38,7 @@ export function presentExperience(e: Experience) {
 }
 
 export function presentCategory(c: Category) {
-  return { id: c.id, slug: c.slug, name: c.name, layout: c.layout, listingCount: c.listingCount };
+  return { id: c.id, slug: c.slug, name: c.name, layout: c.layout, weight: c.weight, listingCount: c.listingCount };
 }
 
 export function presentCategories(rows: Category[]) {

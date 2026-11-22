@@ -143,9 +143,9 @@ export class MemoryExperienceRepository
     return this.categories.get(id) ?? null;
   }
 
-  async createCategory(input: { name: string; slug: string; layout: CategoryLayout }): Promise<Category> {
+  async createCategory(input: { name: string; slug: string; layout: CategoryLayout; weight?: number }): Promise<Category> {
     if ([...this.categories.values()].some((c) => c.slug === input.slug)) throw new ValidationError("That slug is taken.");
-    const c: Category = { id: crypto.randomUUID(), ...input };
+    const c: Category = { id: crypto.randomUUID(), ...input, weight: input.weight ?? 1 };
     this.categories.set(c.id, c);
     return c;
   }
@@ -154,7 +154,7 @@ export class MemoryExperienceRepository
     const c = this.categories.get(id);
     if (!c) throw new Error(`Category ${id} not found`);
     if (input.slug !== undefined && [...this.categories.values()].some((x) => x.slug === input.slug && x.id !== id)) throw new ValidationError("That slug is taken.");
-    const next = { ...c, ...(input.name !== undefined ? { name: input.name } : {}), ...(input.slug !== undefined ? { slug: input.slug } : {}), ...(input.layout !== undefined ? { layout: input.layout } : {}) };
+    const next = { ...c, ...(input.name !== undefined ? { name: input.name } : {}), ...(input.slug !== undefined ? { slug: input.slug } : {}), ...(input.layout !== undefined ? { layout: input.layout } : {}), ...(input.weight !== undefined ? { weight: input.weight } : {}) };
     this.categories.set(id, next);
     return next;
   }
@@ -194,7 +194,7 @@ export class MemoryExperienceRepository
           blurb: e.verdict || undefined,
           durationMinutes: e.durationMinutes || undefined,
           format: e.content?.format,
-          ...(category ? { categoryName: category.name, categorySlug: category.slug } : {}),
+          ...(category ? { categoryName: category.name, categorySlug: category.slug, categoryWeight: category.weight } : {}),
         };
       });
   }

@@ -182,11 +182,15 @@ export class CatalogService {
     return presentCategory(await this.categories.get(id));
   }
 
-  async addCategory(input: { name?: unknown; slug?: unknown; layout?: unknown }) {
+  async setCategoryWeights(items: unknown) {
+    return presentCategories(await this.categories.setWeights(items));
+  }
+
+  async addCategory(input: { name?: unknown; slug?: unknown; layout?: unknown; weight?: unknown }) {
     return presentCategory(await this.categories.create(input));
   }
 
-  async patchCategory(id: string, input: { name?: unknown; slug?: unknown; layout?: unknown }) {
+  async patchCategory(id: string, input: { name?: unknown; slug?: unknown; layout?: unknown; weight?: unknown }) {
     return presentCategory(await this.categories.update(id, input));
   }
 

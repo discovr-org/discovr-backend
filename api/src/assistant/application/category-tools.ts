@@ -42,6 +42,8 @@ export function registerCategoryTools(server: McpServer, catalog: CatalogService
             name: c.name,
             slug: c.slug,
             listingCount: c.listingCount ?? 0,
+            /** Order of its row on the guest home page: 1 to 1000, higher is higher up. Set in the admin. */
+            weight: c.weight,
             review: `${adminUrl}/categories/${c.id}`,
             layout: {
               pageOrder: effectiveSections(c.layout.sections),
