@@ -9,4 +9,6 @@ export interface WelcomeJobRepository {
    */
   claimDue(now: Date, limit: number, retryInMs: number): Promise<WelcomeJob[]>;
   finish(id: string, status: "done" | "failed"): Promise<void>;
+  /** Why the latest try failed. */
+  recordError(id: string, message: string): Promise<void>;
 }

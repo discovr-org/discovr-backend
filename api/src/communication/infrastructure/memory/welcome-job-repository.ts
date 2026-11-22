@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { WelcomeJob, WelcomeJobRepository } from "../../application/ports/welcome-job-repository.js";
 
-type Row = WelcomeJob & { runAt: number; status: string };
+type Row = WelcomeJob & { runAt: number; status: string; lastError?: string };
 
 export class MemoryWelcomeJobRepository implements WelcomeJobRepository {
   private readonly rows: Row[] = [];
@@ -18,6 +18,11 @@ export class MemoryWelcomeJobRepository implements WelcomeJobRepository {
       r.runAt = now.getTime() + retryInMs;
     }
     return due.map(({ id, userId, phoneE164, attempts }) => ({ id, userId, phoneE164, attempts }));
+  }
+
+  async recordError(id: string, message: string) {
+    const r = this.rows.find((x) => x.id === id);
+    if (r) r.lastError = message;
   }
 
   async finish(id: string, status: "done" | "failed") {

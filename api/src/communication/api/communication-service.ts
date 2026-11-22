@@ -21,7 +21,7 @@ export class CommunicationService {
     jobs: WelcomeJobRepository,
     welcomeTemplateId?: string,
   ) {
-    this.welcome = welcomeTemplateId ? new WelcomeQueue(jobs, whatsapp, log, welcomeTemplateId) : null;
+    this.welcome = welcomeTemplateId ? new WelcomeQueue(jobs, whatsapp, welcomeTemplateId) : null;
     this.sendSms = new SendSms(sms);
     this.sendBatch = new SendTemplateBatch(whatsapp, log);
     this.refreshBatch = new RefreshBatch(whatsapp, log);

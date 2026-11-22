@@ -36,6 +36,11 @@ export class SupabaseWelcomeJobRepository implements WelcomeJobRepository {
     return claimed;
   }
 
+  async recordError(id: string, message: string) {
+    const { error } = await this.db.from("welcome_jobs").update({ last_error: message }).eq("id", id);
+    if (error) throw error;
+  }
+
   async finish(id: string, status: "done" | "failed") {
     const { error } = await this.db.from("welcome_jobs").update({ status }).eq("id", id);
     if (error) throw error;

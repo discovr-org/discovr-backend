@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import type { MessageLogRepository } from "./ports/message-log-repository.js";
 import type { WelcomeJobRepository } from "./ports/welcome-job-repository.js";
 import type { WhatsAppSender } from "./ports/whatsapp-sender.js";
 
@@ -15,7 +13,6 @@ export class WelcomeQueue {
   constructor(
     private readonly jobs: WelcomeJobRepository,
     private readonly sender: WhatsAppSender,
-    private readonly log: MessageLogRepository,
     private readonly templateId: string,
   ) {}
 
@@ -31,16 +28,14 @@ export class WelcomeQueue {
     try {
       for (const job of await this.jobs.claimDue(new Date(), 20, RETRY_MS)) {
         const name = (await nameOf(job.userId).catch(() => null)) || "there";
-        const batchId = randomUUID();
         try {
-          const { messageId } = await this.sender.sendTemplate({ toE164: job.phoneE164, name, templateId: this.templateId, variables: [name] });
-          await this.log.add({ batchId, userId: job.userId, phoneE164: job.phoneE164, templateId: this.templateId, providerMessageId: messageId, status: "accepted", failedReason: null });
+          await this.sender.sendTemplate({ toE164: job.phoneE164, name, templateId: this.templateId, variables: [name] });
           await this.jobs.finish(job.id, "done");
         } catch (err) {
           const reason = err instanceof Error ? err.message : "Couldn't send.";
           console.warn(`Welcome WhatsApp failed (try ${job.attempts}):`, reason);
+          await this.jobs.recordError(job.id, reason).catch(() => {});
           if (job.attempts >= MAX_ATTEMPTS) {
-            await this.log.add({ batchId, userId: job.userId, phoneE164: job.phoneE164, templateId: this.templateId, providerMessageId: null, status: "FAILED", failedReason: reason }).catch(() => {});
             await this.jobs.finish(job.id, "failed");
           }
         }
