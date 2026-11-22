@@ -9,26 +9,8 @@ import { readBearerToken, sendApiError } from "./send-error.js";
 
 type Deps = { auth: AuthService; users: UserService; communication: CommunicationService };
 
-/** Admin login, the gate on every /v1/admin route, and the Messages tools (who to reach, what to send). */
+/** The Messages tools (who to reach, what to send). */
 export function registerAdminRoutes(app: FastifyInstance, { auth, users, communication }: Deps) {
-  app.post<{ Body: { email?: unknown; password?: unknown } }>("/v1/admin/login", limit(5), async (req, reply) => {
-    try {
-      return reply.send(auth.adminLogin(req.body?.email, req.body?.password));
-    } catch (err) {
-      return sendApiError(reply, err);
-    }
-  });
-
-  // Everything else under /v1/admin needs the admin token. (Preflight requests carry no token.)
-  app.addHook("onRequest", async (req, reply) => {
-    if (req.method === "OPTIONS" || !req.url.startsWith("/v1/admin/") || req.url.startsWith("/v1/admin/login")) return;
-    try {
-      auth.assertAdmin(readBearerToken(req.headers.authorization));
-    } catch (err) {
-      return sendApiError(reply, err);
-    }
-  });
-
   app.get("/v1/admin/message-templates", async () => ({ templates: communication.templates() }));
 
   // signedUp: today | 7d | all.  leavingWithinDays: 0..60 (last day in Goa is today or within N days).
