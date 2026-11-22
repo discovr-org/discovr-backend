@@ -1,11 +1,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Trip, TripStatus, User } from "../../domain/user.js";
-import type { UserRepository } from "../../application/ports/user-repository.js";
+import { addDays, startOfDayIst, todayIst } from "../../../shared/ist.js";
+import type { UserFilter, UserRepository } from "../../application/ports/user-repository.js";
 
 const COLUMNS = "id, phone_e164, name, created_at, trip_status, trip_last_day, trip_ask_again_on";
 
 export class SupabaseUserRepository implements UserRepository {
   constructor(private readonly db: SupabaseClient) {}
+
+  async list(filter: UserFilter, limit: number): Promise<User[]> {
+    let q = this.db.from("users").select(COLUMNS).order("created_at", { ascending: false }).limit(limit);
+    if (filter.signedUpFrom) q = q.gte("created_at", startOfDayIst(filter.signedUpFrom));
+    if (filter.signedUpTo) q = q.lt("created_at", startOfDayIst(addDays(filter.signedUpTo, 1)));
+    if (filter.leavingWithinDays !== undefined) {
+      const today = todayIst();
+      q = q
+        .eq("trip_status", "date")
+        .gte("trip_last_day", today)
+        .lte("trip_last_day", addDays(today, filter.leavingWithinDays));
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []).map(mapUser);
+  }
+
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (!ids.length) return [];
+    const { data, error } = await this.db.from("users").select(COLUMNS).in("id", ids);
+    if (error) throw error;
+    return (data ?? []).map(mapUser);
+  }
 
   async findByPhone(phoneE164: string): Promise<User | null> {
     const { data, error } = await this.db

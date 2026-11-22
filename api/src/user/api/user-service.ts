@@ -17,7 +17,8 @@ import type { HelpRequestRepository } from "../application/ports/help-request-re
 import { SubmitHelpRequest, type HelpRequestInput } from "../application/submit-help-request.js";
 import { SetTripEnd, type TripEndInput } from "../application/set-trip-end.js";
 import { UpdateUserName } from "../application/update-user-name.js";
-import { presentSave, presentUser } from "../infrastructure/presenters.js";
+import type { UserFilter } from "../application/ports/user-repository.js";
+import { presentContact, presentSave, presentUser } from "../infrastructure/presenters.js";
 
 /** Public door into users, their saves, and trip-update signups, host applications, help requests. */
 export class UserService {
@@ -32,6 +33,7 @@ export class UserService {
   private readonly setTripEnd: SetTripEnd;
   private readonly submitHost: SubmitHostApplication;
   private readonly submitHelp: SubmitHelpRequest;
+  private readonly userRepo: UserRepository;
 
   constructor(
     users: UserRepository,
@@ -40,6 +42,7 @@ export class UserService {
     hostApplications: HostApplicationRepository,
     helpRequests: HelpRequestRepository,
   ) {
+    this.userRepo = users;
     this.findOrCreateUser = new FindOrCreateUser(users);
     this.getUser = new GetUser(users);
     this.listSaves = new ListSaves(saves);
@@ -58,14 +61,26 @@ export class UserService {
     return presentUser(user);
   }
 
+  /** Ops: who matches a filter. Phones come back hidden in the middle; send by id. */
+  async listForMessaging(filter: UserFilter, limit = 500) {
+    const rows = await this.userRepo.list(filter, limit);
+    return rows.map((u) => presentContact(u));
+  }
+
+  /** Ops: the real phone numbers and name values for people ops picked. Server side only. */
+  async contactsFor(ids: string[]) {
+    const rows = await this.userRepo.findByIds(ids);
+    return rows.map((u) => ({ phone: u.phoneE164, ...presentContact(u) }));
+  }
+
   async setTrip(userId: string, input: TripEndInput) {
     const user = await this.setTripEnd.execute(userId, input);
     return presentUser(user);
   }
 
   async findOrCreateByPhone(phoneE164: string) {
-    const user = await this.findOrCreateUser.execute(phoneE164);
-    return presentUser(user);
+    const { user, created } = await this.findOrCreateUser.execute(phoneE164);
+    return { user: presentUser(user), created };
   }
 
   async getById(id: string) {

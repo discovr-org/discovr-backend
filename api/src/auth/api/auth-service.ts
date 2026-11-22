@@ -1,6 +1,7 @@
 import type { CommunicationService } from "../../communication/api/communication-service.js";
 import type { UserService } from "../../user/api/user-service.js";
 import { SessionCache } from "../application/session-cache.js";
+import { AdminAuth } from "../application/admin-auth.js";
 import { CreateHandoff, ExchangeHandoff } from "../application/handoff.js";
 import type { HandoffRepository } from "../application/ports/handoff-repository.js";
 import { Logout } from "../application/logout.js";
@@ -16,6 +17,7 @@ export class AuthService {
   private readonly verifyOtp: VerifyOtp;
   private readonly resolveSession: ResolveSession;
   private readonly logout: Logout;
+  private readonly admin: AdminAuth;
   private readonly createHandoff: CreateHandoff;
   private readonly exchangeHandoff: ExchangeHandoff;
 
@@ -25,9 +27,11 @@ export class AuthService {
     handoffs: HandoffRepository,
     users: UserService,
     communication: CommunicationService,
+    adminKey: string,
   ) {
+    this.admin = new AdminAuth(adminKey);
     this.requestOtp = new RequestOtp(otps, communication);
-    this.verifyOtp = new VerifyOtp(otps, sessions, users);
+    this.verifyOtp = new VerifyOtp(otps, sessions, users, communication);
     const cache = new SessionCache();
     this.resolveSession = new ResolveSession(sessions, users, cache);
     this.logout = new Logout(sessions, cache);
@@ -50,6 +54,15 @@ export class AuthService {
 
   exchangeHandoffCode(code: unknown) {
     return this.exchangeHandoff.execute(code);
+  }
+
+  adminLogin(email: unknown, password: unknown) {
+    return this.admin.login(email, password);
+  }
+
+  /** Throws unless the token belongs to a signed-in admin. */
+  assertAdmin(token: string | null) {
+    this.admin.verify(token);
   }
 
   userIdFor(sessionId: string) {

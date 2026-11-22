@@ -9,8 +9,10 @@ import type {
   HostPatch,
 } from "../catalog/domain/experience.js";
 import type { AssistantService } from "../assistant/api/assistant-service.js";
+import type { CommunicationService } from "../communication/api/communication-service.js";
 import type { UserService } from "../user/api/user-service.js";
 import { ValidationError } from "../shared/errors.js";
+import { registerAdminRoutes } from "./admin-routes.js";
 import { registerAuthRoutes } from "./auth-routes.js";
 import { registerCategoryRoutes, registerHomeFeedRoutes, registerSiteSettingsRoutes } from "./category-routes.js";
 import { registerMcpRoutes } from "./mcp-routes.js";
@@ -22,12 +24,16 @@ export type HttpDeps = {
   auth: AuthService;
   users: UserService;
   assistant: AssistantService;
+  communication: CommunicationService;
 };
 
 /**
  * Public HTTP surface. Calls module APIs only — never use-cases or Supabase.
  */
 export async function registerRoutes(app: FastifyInstance, deps: HttpDeps) {
+  // First, so its gate runs before every other /v1/admin route.
+  registerAdminRoutes(app, deps);
+
   app.get("/health", async () => ({ ok: true, service: "api" }));
 
   registerCategoryRoutes(app, deps.catalog);

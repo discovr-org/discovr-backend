@@ -1,5 +1,6 @@
 import type { UserService } from "../../user/api/user-service.js";
 import type { PresentedUser } from "../../user/infrastructure/presenters.js";
+import type { CommunicationService } from "../../communication/api/communication-service.js";
 import { ValidationError } from "../../shared/errors.js";
 import {
   generateSessionToken,
@@ -18,6 +19,7 @@ export class VerifyOtp {
     private readonly otps: OtpRepository,
     private readonly sessions: SessionRepository,
     private readonly users: UserService,
+    private readonly communication: CommunicationService,
   ) {}
 
   async execute(input: {
@@ -45,7 +47,8 @@ export class VerifyOtp {
     }
 
     await this.otps.markConsumed(otp.id, now);
-    const user = await this.users.findOrCreateByPhone(phone);
+    const { user, created } = await this.users.findOrCreateByPhone(phone);
+    if (created) await this.communication.queueWelcome(user.id, phone).catch((e) => console.warn("Welcome not queued:", e)); // never fails sign-in
     const sessionId = generateSessionToken();
     await this.sessions.create({
       userId: user.id,

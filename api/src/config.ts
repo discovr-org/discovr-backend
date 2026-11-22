@@ -20,6 +20,9 @@ const schema = z.object({
   twilioAccountSid: z.string().min(1).optional(),
   twilioAuthToken: z.string().min(1).optional(),
   twilioFromNumber: z.string().min(1).optional(),
+  botspaceApiKey: z.string().min(1).optional(),
+  botspaceChannelId: z.string().min(1).optional(),
+  botspaceWelcomeTemplateId: z.string().min(1).optional(),
 });
 
 export type ApiConfig = z.infer<typeof schema>;
@@ -62,6 +65,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     twilioAccountSid: env.TWILIO_ACCOUNT_SID || undefined,
     twilioAuthToken: env.TWILIO_AUTH_TOKEN || undefined,
     twilioFromNumber: env.TWILIO_FROM_NUMBER || undefined,
+    botspaceApiKey: env.BOTSPACE_API_KEY?.trim() || undefined,
+    botspaceChannelId: env.BOTSPACE_CHANNEL_ID?.trim() || undefined,
+    botspaceWelcomeTemplateId: env.BOTSPACE_WELCOME_TEMPLATE_ID?.trim() || undefined,
   });
   if (!parsed.success) {
     throw new Error(`Invalid api config: ${parsed.error.message}`);

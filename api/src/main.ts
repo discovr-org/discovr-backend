@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { config as loadEnv } from "dotenv";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +7,9 @@ import { WebPlaceFinder } from "./assistant/infrastructure/web-place-finder.js";
 import { AuthService } from "./auth/api/auth-service.js";
 import type { OtpRepository } from "./auth/application/ports/otp-repository.js";
 import type { HandoffRepository } from "./auth/application/ports/handoff-repository.js";
+import { BotspaceWhatsAppSender, UnconfiguredWhatsAppSender } from "./communication/infrastructure/botspace/whatsapp-sender.js";
+import { MemoryMessageLogRepository } from "./communication/infrastructure/memory/message-log-repository.js";
+import { SupabaseMessageLogRepository } from "./communication/infrastructure/supabase/message-log-repository.js";
 import type { SessionRepository } from "./auth/application/ports/session-repository.js";
 import { MemoryHandoffRepository } from "./auth/infrastructure/memory/handoff-repository.js";
 import { MemoryOtpRepository } from "./auth/infrastructure/memory/otp-repository.js";
@@ -23,6 +27,8 @@ import { MemoryExperienceRepository } from "./catalog/infrastructure/memory/expe
 import { createSupabaseAdmin } from "./catalog/infrastructure/supabase/client.js";
 import { SupabaseExperienceMediaRepository } from "./catalog/infrastructure/supabase/experience-media-repository.js";
 import { SupabaseExperienceRepository } from "./catalog/infrastructure/supabase/experience-repository.js";
+import { MemoryWelcomeJobRepository } from "./communication/infrastructure/memory/welcome-job-repository.js";
+import { SupabaseWelcomeJobRepository } from "./communication/infrastructure/supabase/welcome-job-repository.js";
 import { CommunicationService } from "./communication/api/communication-service.js";
 import type { SmsSender } from "./communication/application/ports/sms-sender.js";
 import { TwilioSmsSender } from "./communication/infrastructure/twilio/sms-sender.js";
@@ -66,13 +72,20 @@ async function main() {
     createHostApplicationRepository(authSource, db),
     createHelpRequestRepository(authSource, db),
   );
-  const communication = new CommunicationService(createSmsSender(config));
+  const whatsapp =
+    config.botspaceApiKey && config.botspaceChannelId
+      ? new BotspaceWhatsAppSender(config.botspaceApiKey, config.botspaceChannelId)
+      : new UnconfiguredWhatsAppSender();
+  const messageLog = authSource === "memory" || !db ? new MemoryMessageLogRepository() : new SupabaseMessageLogRepository(db);
+  const welcomeJobs = authSource === "memory" || !db ? new MemoryWelcomeJobRepository() : new SupabaseWelcomeJobRepository(db);
+  const communication = new CommunicationService(createSmsSender(config), whatsapp, messageLog, welcomeJobs, config.botspaceWelcomeTemplateId);
+  communication.startWelcomeWorker((id) => users.getById(id).then((u) => u.name, () => null));
   const { otps, sessions, handoffs } = createAuthStores(authSource, db);
-  const auth = new AuthService(otps, sessions, handoffs, users, communication);
+  const auth = new AuthService(otps, sessions, handoffs, users, communication, config.supabaseSecretKey ?? randomBytes(32).toString("hex"));
 
   const assistant = new AssistantService(catalog, new WebPlaceFinder(), config.adminUrl);
 
-  const app = await buildApp({ catalog, auth, users, assistant }, config.corsOrigins);
+  const app = await buildApp({ catalog, auth, users, assistant, communication }, config.corsOrigins);
   await app.listen({ port: config.port, host: "0.0.0.0" });
 }
 
