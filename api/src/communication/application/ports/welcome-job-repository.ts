@@ -9,6 +9,12 @@ export interface WelcomeJobRepository {
    */
   claimDue(now: Date, limit: number, retryInMs: number): Promise<WelcomeJob[]>;
   finish(id: string, status: "done" | "failed"): Promise<void>;
+  /** BotSpace took it. The job is done; its message id lets us check delivery later. */
+  markSent(id: string, messageId: string, at: Date): Promise<void>;
+  /** Sent jobs sent between `newerThan` and `olderThan` whose delivery is still unknown. */
+  listAwaitingDelivery(olderThan: Date, newerThan: Date, limit: number): Promise<{ id: string; messageId: string }[]>;
+  /** WhatsApp's final word. `error` is set when it was not delivered. */
+  recordDelivery(id: string, status: string, error: string | null): Promise<void>;
   /** Why the latest try failed. */
   recordError(id: string, message: string): Promise<void>;
 }

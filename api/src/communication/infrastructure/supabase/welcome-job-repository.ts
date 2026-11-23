@@ -36,6 +36,32 @@ export class SupabaseWelcomeJobRepository implements WelcomeJobRepository {
     return claimed;
   }
 
+  async markSent(id: string, messageId: string, at: Date) {
+    const { error } = await this.db.from("welcome_jobs").update({ status: "done", message_id: messageId, sent_at: at.toISOString() }).eq("id", id);
+    if (error) throw error;
+  }
+
+  async listAwaitingDelivery(olderThan: Date, newerThan: Date, limit: number) {
+    const { data, error } = await this.db
+      .from("welcome_jobs")
+      .select("id, message_id")
+      .not("message_id", "is", null)
+      .is("delivery_status", null)
+      .lte("sent_at", olderThan.toISOString())
+      .gte("sent_at", newerThan.toISOString())
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({ id: String(r.id), messageId: String(r.message_id) }));
+  }
+
+  async recordDelivery(id: string, status: string, errorText: string | null) {
+    const { error } = await this.db
+      .from("welcome_jobs")
+      .update({ delivery_status: status, ...(errorText ? { last_error: errorText } : {}) })
+      .eq("id", id);
+    if (error) throw error;
+  }
+
   async recordError(id: string, message: string) {
     const { error } = await this.db.from("welcome_jobs").update({ last_error: message }).eq("id", id);
     if (error) throw error;
